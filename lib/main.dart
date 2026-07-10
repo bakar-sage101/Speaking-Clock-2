@@ -69,6 +69,8 @@ class SpeakingClockApp extends StatefulWidget {
 }
 
 class _SpeakingClockAppState extends State<SpeakingClockApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   var _tab = 0;
   var _darkMode = false;
   List<Reminder> _reminders = [
@@ -126,12 +128,12 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     );
   }
 
-  Future<void> _showAddReminder() async {
+  Future<void> _showAddReminder({ReminderType initialType = ReminderType.water}) async {
     final reminder = await showModalBottomSheet<Reminder>(
-      context: context,
+      context: _navigatorKey.currentState!.context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const ReminderEditor(),
+      builder: (_) => ReminderEditor(initialType: initialType),
     );
     if (reminder != null) {
       setState(() => _reminders = [..._reminders, reminder]);
@@ -140,13 +142,21 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     }
   }
 
+  void _openReminderDetails(Reminder reminder) {
+    _navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReminderDetailScreen(reminder: reminder),
+      ),
+    );
+  }
+
   Future<void> _scheduleReliableAlarm(Reminder reminder) async {
     if (reminder.triggerAtMillis == null) return;
     try {
       final readiness = await ReliabilityPlatform.getStatus();
       if (!readiness.isReady) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          _messengerKey.currentState?.showSnackBar(
             const SnackBar(content: Text('Reminder saved. Finish Reliable Alarm setup before it can speak.')),
           );
         }
@@ -158,19 +168,19 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
         title: reminder.title,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _messengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text('Reliable Alarm scheduled.')),
         );
       }
     } on PlatformException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _messengerKey.currentState?.showSnackBar(
           SnackBar(content: Text(error.message ?? 'Reliable Alarm could not be scheduled.')),
         );
       }
     } on MissingPluginException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        _messengerKey.currentState?.showSnackBar(
           const SnackBar(content: Text('Reliable Alarm is not available on this platform yet.')),
         );
       }
@@ -186,6 +196,8 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     return MaterialApp(
       title: 'Speaking Clock',
       debugShowCheckedModeBanner: false,
+      navigatorKey: _navigatorKey,
+      scaffoldMessengerKey: _messengerKey,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: scheme,
@@ -198,12 +210,21 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
           child: IndexedStack(
             index: _tab,
             children: [
-              TodayScreen(reminders: _reminders, onAdd: _showAddReminder),
-              RoutinesScreen(reminders: _reminders, onAdd: _showAddReminder),
+              TodayScreen(
+                reminders: _reminders,
+                onAdd: _showAddReminder,
+                onOpenReminder: _openReminderDetails,
+              ),
+              RoutinesScreen(
+                reminders: _reminders,
+                onAdd: _showAddReminder,
+                onAddForType: (type) => _showAddReminder(initialType: type),
+                onOpenReminder: _openReminderDetails,
+              ),
               SettingsScreen(
                 darkMode: _darkMode,
                 onDarkModeChanged: (value) => setState(() => _darkMode = value),
-                onOpenReliability: () => Navigator.of(context).push(
+                onOpenReliability: () => _navigatorKey.currentState!.push(
                   MaterialPageRoute<void>(
                     builder: (_) => const ReliabilityScreen(),
                   ),
@@ -248,10 +269,16 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
 }
 
 class TodayScreen extends StatelessWidget {
-  const TodayScreen({super.key, required this.reminders, required this.onAdd});
+  const TodayScreen({
+    super.key,
+    required this.reminders,
+    required this.onAdd,
+    required this.onOpenReminder,
+  });
 
   final List<Reminder> reminders;
   final VoidCallback onAdd;
+  final ValueChanged<Reminder> onOpenReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +303,7 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height: 30),
         Text('NEXT UP', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        NextReminderCard(reminder: next),
+        NextReminderCard(reminder: next, onOpen: () => onOpenReminder(next)),
         const SizedBox(height: 28),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -289,7 +316,7 @@ class TodayScreen extends StatelessWidget {
         ...reminders.skip(1).map(
               (reminder) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: ReminderRow(reminder: reminder),
+                child: ReminderRow(reminder: reminder, onTap: () => onOpenReminder(reminder)),
               ),
             ),
         const SizedBox(height: 18),
@@ -323,9 +350,10 @@ class ReadinessChip extends StatelessWidget {
 }
 
 class NextReminderCard extends StatelessWidget {
-  const NextReminderCard({super.key, required this.reminder});
+  const NextReminderCard({super.key, required this.reminder, required this.onOpen});
 
   final Reminder reminder;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +371,7 @@ class NextReminderCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ReminderIcon(type: reminder.type, large: true),
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz_rounded)),
+              IconButton(onPressed: onOpen, icon: const Icon(Icons.more_horiz_rounded)),
             ],
           ),
           const SizedBox(height: 22),
@@ -367,19 +395,22 @@ class NextReminderCard extends StatelessWidget {
 }
 
 class ReminderRow extends StatelessWidget {
-  const ReminderRow({super.key, required this.reminder});
+  const ReminderRow({super.key, required this.reminder, this.onTap});
 
   final Reminder reminder;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
         children: [
           ReminderIcon(type: reminder.type),
           const SizedBox(width: 12),
@@ -401,6 +432,8 @@ class ReminderRow extends StatelessWidget {
             ],
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -455,10 +488,18 @@ class ReliabilityNote extends StatelessWidget {
 }
 
 class RoutinesScreen extends StatelessWidget {
-  const RoutinesScreen({super.key, required this.reminders, required this.onAdd});
+  const RoutinesScreen({
+    super.key,
+    required this.reminders,
+    required this.onAdd,
+    required this.onAddForType,
+    required this.onOpenReminder,
+  });
 
   final List<Reminder> reminders;
   final VoidCallback onAdd;
+  final ValueChanged<ReminderType> onAddForType;
+  final ValueChanged<Reminder> onOpenReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -471,20 +512,20 @@ class RoutinesScreen extends StatelessWidget {
         const SizedBox(height: 28),
         Text('QUICK START', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        const Wrap(
+        Wrap(
           spacing: 10,
           runSpacing: 10,
           children: [
-            RoutinePreset(icon: Icons.water_drop_outlined, label: 'Drink water'),
-            RoutinePreset(icon: Icons.visibility_outlined, label: 'Eye break'),
-            RoutinePreset(icon: Icons.self_improvement_outlined, label: 'Stretch'),
-            RoutinePreset(icon: Icons.directions_walk_outlined, label: 'Walk'),
+            RoutinePreset(icon: Icons.water_drop_outlined, label: 'Drink water', onTap: () => onAddForType(ReminderType.water)),
+            RoutinePreset(icon: Icons.visibility_outlined, label: 'Eye break', onTap: () => onAddForType(ReminderType.breakTime)),
+            RoutinePreset(icon: Icons.self_improvement_outlined, label: 'Stretch', onTap: () => onAddForType(ReminderType.breakTime)),
+            RoutinePreset(icon: Icons.directions_walk_outlined, label: 'Walk', onTap: () => onAddForType(ReminderType.breakTime)),
           ],
         ),
         const SizedBox(height: 30),
         Text('YOUR ROUTINES', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        ...reminders.where((item) => item.type != ReminderType.meeting).map((item) => Padding(padding: const EdgeInsets.only(bottom: 10), child: ReminderRow(reminder: item))),
+        ...reminders.where((item) => item.type != ReminderType.meeting).map((item) => Padding(padding: const EdgeInsets.only(bottom: 10), child: ReminderRow(reminder: item, onTap: () => onOpenReminder(item)))),
         const SizedBox(height: 10),
         OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Create a custom routine')),
       ],
@@ -493,18 +534,26 @@ class RoutinesScreen extends StatelessWidget {
 }
 
 class RoutinePreset extends StatelessWidget {
-  const RoutinePreset({super.key, required this.icon, required this.label});
+  const RoutinePreset({super.key, required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 152,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: AppColors.sage), const SizedBox(height: 16), Text(label, style: const TextStyle(fontWeight: FontWeight.w800))]),
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: 152,
+          padding: const EdgeInsets.all(15),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: AppColors.sage), const SizedBox(height: 16), Text(label, style: const TextStyle(fontWeight: FontWeight.w800))]),
+        ),
+      ),
     );
   }
 }
@@ -724,8 +773,66 @@ class _ReadinessItem extends StatelessWidget {
   }
 }
 
+class ReminderDetailScreen extends StatelessWidget {
+  const ReminderDetailScreen({super.key, required this.reminder});
+
+  final Reminder reminder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reminder details')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Center(child: ReminderIcon(type: reminder.type, large: true)),
+          const SizedBox(height: 20),
+          Text(reminder.title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(reminder.time, textAlign: TextAlign.center, style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 28),
+          _DetailCard(label: 'Schedule', value: reminder.detail),
+          const SizedBox(height: 10),
+          _DetailCard(label: 'Delivery', value: reminder.isAlarm ? 'Reliable spoken alarm' : 'Gentle reminder'),
+          const SizedBox(height: 28),
+          if (reminder.type == ReminderType.meeting)
+            FilledButton.icon(
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting links will be connected with Google Calendar setup.'))),
+              icon: const Icon(Icons.videocam_rounded),
+              label: const Text('Join meeting'),
+            )
+          else
+            FilledButton.tonalIcon(
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Snoozed for 10 minutes.'))),
+              icon: const Icon(Icons.snooze_rounded),
+              label: const Text('Snooze 10 min'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailCard extends StatelessWidget {
+  const _DetailCard({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: _sectionLabel(context)), const SizedBox(height: 6), Text(value, style: Theme.of(context).textTheme.bodyLarge)]),
+    );
+  }
+}
+
 class ReminderEditor extends StatefulWidget {
-  const ReminderEditor({super.key});
+  const ReminderEditor({super.key, required this.initialType});
+
+  final ReminderType initialType;
 
   @override
   State<ReminderEditor> createState() => _ReminderEditorState();
@@ -733,10 +840,16 @@ class ReminderEditor extends StatefulWidget {
 
 class _ReminderEditorState extends State<ReminderEditor> {
   final _controller = TextEditingController();
-  var _type = ReminderType.water;
+  late ReminderType _type;
   var _isAlarm = false;
   var _frequency = 'Every day';
   var _time = const TimeOfDay(hour: 10, minute: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    _type = widget.initialType;
+  }
 
   @override
   void dispose() {
@@ -782,7 +895,17 @@ class _ReminderEditorState extends State<ReminderEditor> {
             children: [
               Center(child: Container(height: 4, width: 40, decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(10)))),
               const SizedBox(height: 22),
-              Text('New reminder', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('New reminder', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
               const SizedBox(height: 18),
               TextField(controller: _controller, autofocus: true, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'What should we remind you?', hintText: 'Drink water', border: OutlineInputBorder())),
               const SizedBox(height: 18),
@@ -798,8 +921,9 @@ class _ReminderEditorState extends State<ReminderEditor> {
                 Expanded(child: DropdownButtonFormField<String>(initialValue: _frequency, decoration: const InputDecoration(labelText: 'Repeat', border: OutlineInputBorder()), items: const ['Once', 'Every day', 'Weekdays', 'Every 90 min'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _frequency = value ?? _frequency))),
               ]),
               const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(color: AppColors.sageLight, borderRadius: BorderRadius.circular(16)),
+              Material(
+                color: AppColors.sageLight,
+                borderRadius: BorderRadius.circular(16),
                 child: SwitchListTile.adaptive(value: _isAlarm, onChanged: (value) => setState(() => _isAlarm = value), secondary: const Icon(Icons.volume_up_outlined, color: AppColors.amber), title: const Text('Reliable Alarm', style: TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('Use spoken alarm for important reminders')),
               ),
               const SizedBox(height: 18),
