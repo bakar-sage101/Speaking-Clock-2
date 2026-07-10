@@ -22,7 +22,9 @@ class MainActivity : FlutterActivity() {
                     "requestNotifications" -> requestNotifications(result)
                     "requestExactAlarms" -> requestExactAlarms(result)
                     "openDndSettings" -> openDndSettings(result)
+                    "openFullScreenIntentSettings" -> openFullScreenIntentSettings(result)
                     "scheduleAlarm" -> scheduleAlarm(call.arguments as? Map<*, *>, result)
+                    "cancelAlarm" -> cancelAlarm(call.arguments as? Map<*, *>, result)
                     else -> result.notImplemented()
                 }
             }
@@ -51,10 +53,32 @@ class MainActivity : FlutterActivity() {
         result.success(null)
     }
 
+    private fun openFullScreenIntentSettings(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                    data = Uri.parse("package:$packageName")
+                },
+            )
+        } else {
+            startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                },
+            )
+        }
+        result.success(null)
+    }
+
     private fun scheduleAlarm(arguments: Map<*, *>?, result: MethodChannel.Result) {
         val id = arguments?.get("id") as? Int
         val triggerAtMillis = arguments?.get("triggerAtMillis") as? Long
         val title = arguments?.get("title") as? String
+        val alarmStyle = arguments?.get("alarmStyle") as? Boolean ?: false
+        val spoken = arguments?.get("spoken") as? Boolean ?: false
+        val spokenMessage = arguments?.get("spokenMessage") as? String ?: ""
+        val toneId = arguments?.get("toneId") as? String ?: "softChime"
+        val snoozeMinutes = arguments?.get("snoozeMinutes") as? Int ?: 10
         if (id == null || triggerAtMillis == null || title == null) {
             result.error("invalid_arguments", "An id, title, and trigger time are required.", null)
             return
@@ -63,7 +87,18 @@ class MainActivity : FlutterActivity() {
             result.error("exact_alarm_unavailable", "Exact alarm access has not been granted.", null)
             return
         }
-        AlarmScheduler.schedule(this, id, triggerAtMillis, title)
+        AlarmNotificationHelper.ensureChannels(this)
+        AlarmScheduler.schedule(this, id, triggerAtMillis, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes)
+        result.success(null)
+    }
+
+    private fun cancelAlarm(arguments: Map<*, *>?, result: MethodChannel.Result) {
+        val id = arguments?.get("id") as? Int
+        if (id == null) {
+            result.error("invalid_arguments", "An id is required.", null)
+            return
+        }
+        AlarmScheduler.cancel(this, id)
         result.success(null)
     }
 }
@@ -82,12 +117,18 @@ object AlarmReadiness {
         }
         val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
         val audioManager = context.getSystemService(AudioManager::class.java)
+        val fullScreenIntentEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            notificationManager.canUseFullScreenIntent()
+        } else {
+            true
+        }
         return mapOf(
             "platform" to "android",
             "notificationsEnabled" to notificationsEnabled,
             "exactAlarmEnabled" to canScheduleExactAlarms(context),
             "dndPolicyAccess" to notificationManager.isNotificationPolicyAccessGranted,
             "alarmVolumeEnabled" to (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0),
+            "fullScreenIntentEnabled" to fullScreenIntentEnabled,
         )
     }
 }

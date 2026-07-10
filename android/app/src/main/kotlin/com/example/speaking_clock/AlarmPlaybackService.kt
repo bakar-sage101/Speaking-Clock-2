@@ -1,29 +1,53 @@
 package com.example.speaking_clock
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.media.AudioAttributes
-import android.os.Build
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.speech.tts.TextToSpeech
-import androidx.core.app.NotificationCompat
+import android.speech.tts.UtteranceProgressListener
 
 class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
     private var textToSpeech: TextToSpeech? = null
+    private var ringtone: Ringtone? = null
+    private val handler = Handler(Looper.getMainLooper())
     private var title = "Reminder"
+    private var spoken = false
+    private var spokenMessage = ""
+    private var toneId = "softChime"
+    private var id = 0
+    private var snoozeMinutes = 10
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == actionStop) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        stopPlayback()
+        id = intent?.getIntExtra(AlarmReceiver.extraId, 0) ?: 0
         title = intent?.getStringExtra(AlarmReceiver.extraTitle) ?: "Reminder"
-        startForeground(notificationId, createNotification(title))
-        textToSpeech = TextToSpeech(this, this)
+        spoken = intent?.getBooleanExtra(AlarmReceiver.extraSpoken, false) ?: false
+        spokenMessage = intent?.getStringExtra(AlarmReceiver.extraSpokenMessage).orEmpty()
+        toneId = intent?.getStringExtra(AlarmReceiver.extraToneId) ?: "softChime"
+        snoozeMinutes = intent?.getIntExtra(AlarmReceiver.extraSnoozeMinutes, 10) ?: 10
+        startForeground(notificationId, AlarmNotificationHelper.createReliableNotification(this, id, title, spoken, spokenMessage, toneId, snoozeMinutes))
+        if (spoken) {
+            textToSpeech = TextToSpeech(this, this)
+        } else {
+            playTone()
+        }
         return START_NOT_STICKY
     }
 
     override fun onInit(status: Int) {
         if (status != TextToSpeech.SUCCESS) {
-            stopSelf()
+            playToneAfterSpeechGap()
             return
         }
         textToSpeech?.setAudioAttributes(
@@ -32,39 +56,72 @@ class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build(),
         )
-        textToSpeech?.speak("It is time for $title", TextToSpeech.QUEUE_FLUSH, null, "speaking_clock_alarm")
+        textToSpeech?.setOnUtteranceProgressListener(
+            object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) = Unit
+
+                override fun onDone(utteranceId: String?) {
+                    playToneAfterSpeechGap()
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onError(utteranceId: String?) {
+                    playToneAfterSpeechGap()
+                }
+            },
+        )
+        val message = spokenMessage.ifBlank { "It is time for $title" }
+        textToSpeech?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "speaking_clock_alarm")
     }
 
     override fun onDestroy() {
-        textToSpeech?.stop()
-        textToSpeech?.shutdown()
+        stopPlayback()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun createNotification(reminderTitle: String): android.app.Notification {
-        val manager = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(channelId, "Reliable alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-                    description = "Spoken alarms for important Speaking Clock reminders"
-                    setBypassDnd(false)
-                },
-            )
+    private fun playTone() {
+        if (toneId == "vibrationOnly") return
+        ringtone?.stop()
+        val toneUri = toneUriFor(toneId)
+        ringtone = RingtoneManager.getRingtone(this, toneUri)?.apply {
+            audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                isLooping = true
+            }
+            play()
         }
-        return NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(reminderTitle)
-            .setContentText("Speaking Clock alarm")
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setOngoing(true)
-            .build()
+    }
+
+    private fun playToneAfterSpeechGap() {
+        handler.postDelayed({ playTone() }, speechToAlarmGapMillis)
+    }
+
+    private fun stopPlayback() {
+        handler.removeCallbacksAndMessages(null)
+        ringtone?.stop()
+        ringtone = null
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
+        textToSpeech = null
+    }
+
+    private fun toneUriFor(toneId: String): Uri {
+        val type = when (toneId) {
+            "softChime", "calmWater" -> RingtoneManager.TYPE_NOTIFICATION
+            else -> RingtoneManager.TYPE_ALARM
+        }
+        return RingtoneManager.getDefaultUri(type)
+            ?: android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI
     }
 
     companion object {
-        private const val channelId = "reliable_alarms"
+        const val actionStop = "com.example.speaking_clock.STOP_ALARM"
         private const val notificationId = 2101
+        private const val speechToAlarmGapMillis = 2000L
     }
 }

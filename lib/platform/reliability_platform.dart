@@ -7,6 +7,7 @@ class AlarmReadiness {
     required this.exactAlarmEnabled,
     required this.dndPolicyAccess,
     required this.alarmVolumeEnabled,
+    required this.fullScreenIntentEnabled,
   });
 
   final String platform;
@@ -14,12 +15,18 @@ class AlarmReadiness {
   final bool exactAlarmEnabled;
   final bool dndPolicyAccess;
   final bool alarmVolumeEnabled;
+  final bool fullScreenIntentEnabled;
 
   bool get isReady =>
       notificationsEnabled &&
       exactAlarmEnabled &&
       dndPolicyAccess &&
-      alarmVolumeEnabled;
+      alarmVolumeEnabled &&
+      fullScreenIntentEnabled;
+
+  bool get canScheduleAlarms => notificationsEnabled && exactAlarmEnabled;
+
+  bool get canScheduleSpokenAlarms => canScheduleAlarms && alarmVolumeEnabled;
 
   factory AlarmReadiness.fromMap(Map<Object?, Object?> values) => AlarmReadiness(
         platform: values['platform'] as String? ?? 'unknown',
@@ -27,6 +34,7 @@ class AlarmReadiness {
         exactAlarmEnabled: values['exactAlarmEnabled'] as bool? ?? false,
         dndPolicyAccess: values['dndPolicyAccess'] as bool? ?? false,
         alarmVolumeEnabled: values['alarmVolumeEnabled'] as bool? ?? false,
+        fullScreenIntentEnabled: values['fullScreenIntentEnabled'] as bool? ?? false,
       );
 }
 
@@ -49,14 +57,30 @@ class ReliabilityPlatform {
   static Future<void> openDndSettings() =>
       _channel.invokeMethod<void>('openDndSettings');
 
+  static Future<void> openFullScreenIntentSettings() =>
+      _channel.invokeMethod<void>('openFullScreenIntentSettings');
+
   static Future<void> scheduleAlarm({
     required int id,
     required DateTime triggerAt,
     required String title,
+    required bool alarmStyle,
+    required bool spoken,
+    required String spokenMessage,
+    required String toneId,
+    required int snoozeMinutes,
   }) =>
       _channel.invokeMethod<void>('scheduleAlarm', {
         'id': id,
         'triggerAtMillis': triggerAt.millisecondsSinceEpoch,
         'title': title,
+        'alarmStyle': alarmStyle,
+        'spoken': spoken,
+        'spokenMessage': spokenMessage,
+        'toneId': toneId,
+        'snoozeMinutes': snoozeMinutes,
       });
+
+  static Future<void> cancelAlarm({required int id}) =>
+      _channel.invokeMethod<void>('cancelAlarm', {'id': id});
 }

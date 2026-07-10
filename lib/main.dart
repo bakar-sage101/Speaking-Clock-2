@@ -1,9 +1,8 @@
-import 'dart:convert';
-
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import 'data/app_database.dart';
 import 'platform/reliability_platform.dart';
 
 void main() => runApp(const SpeakingClockApp());
@@ -21,6 +20,10 @@ class AppColors {
 
 enum ReminderType { water, breakTime, meeting, medication, custom }
 
+enum DeliveryMode { gentle, alarm, speaking }
+
+enum ToneOption { softChime, classicAlarm, digitalBeep, morningBell, calmWater, vibrationOnly }
+
 class Reminder {
   const Reminder({
     required this.id,
@@ -28,8 +31,14 @@ class Reminder {
     required this.time,
     required this.detail,
     required this.type,
-    this.isAlarm = false,
+    this.deliveryMode = DeliveryMode.gentle,
+    this.spokenMessage = '',
+    this.tone = ToneOption.softChime,
+    this.enabled = true,
+    this.snoozeMinutes = 10,
     this.triggerAtMillis,
+    this.createdAtMillis,
+    this.updatedAtMillis,
   });
 
   final String id;
@@ -37,27 +46,80 @@ class Reminder {
   final String time;
   final String detail;
   final ReminderType type;
-  final bool isAlarm;
+  final DeliveryMode deliveryMode;
+  final String spokenMessage;
+  final ToneOption tone;
+  final bool enabled;
+  final int snoozeMinutes;
   final int? triggerAtMillis;
+  final int? createdAtMillis;
+  final int? updatedAtMillis;
 
-  Map<String, Object?> toJson() => {
-        'id': id,
-        'title': title,
-        'time': time,
-        'detail': detail,
-        'type': type.index,
-        'isAlarm': isAlarm,
-        'triggerAtMillis': triggerAtMillis,
-      };
+  bool get isAlarm => deliveryMode != DeliveryMode.gentle;
+  bool get isSpeakingAlarm => deliveryMode == DeliveryMode.speaking;
 
-  factory Reminder.fromJson(Map<String, dynamic> json) => Reminder(
-        id: json['id'] as String? ?? '${json['title']}-${json['time']}',
-        title: json['title'] as String,
-        time: json['time'] as String,
-        detail: json['detail'] as String,
-        type: ReminderType.values[json['type'] as int],
-        isAlarm: json['isAlarm'] as bool? ?? false,
-        triggerAtMillis: json['triggerAtMillis'] as int?,
+  Reminder copyWith({
+    String? title,
+    String? time,
+    String? detail,
+    ReminderType? type,
+    DeliveryMode? deliveryMode,
+    String? spokenMessage,
+    ToneOption? tone,
+    bool? enabled,
+    int? snoozeMinutes,
+    int? triggerAtMillis,
+    int? updatedAtMillis,
+  }) =>
+      Reminder(
+        id: id,
+        title: title ?? this.title,
+        time: time ?? this.time,
+        detail: detail ?? this.detail,
+        type: type ?? this.type,
+        deliveryMode: deliveryMode ?? this.deliveryMode,
+        spokenMessage: spokenMessage ?? this.spokenMessage,
+        tone: tone ?? this.tone,
+        enabled: enabled ?? this.enabled,
+        snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
+        triggerAtMillis: triggerAtMillis ?? this.triggerAtMillis,
+        createdAtMillis: createdAtMillis,
+        updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+      );
+
+  ReminderRecordsCompanion toCompanion() {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return ReminderRecordsCompanion(
+      id: Value(id),
+      title: Value(title),
+      detail: Value(detail),
+      type: Value(type.index),
+      deliveryMode: Value(deliveryMode.name),
+      spokenMessage: Value(spokenMessage),
+      toneId: Value(tone.name),
+      enabled: Value(enabled),
+      snoozeMinutes: Value(snoozeMinutes),
+      timeLabel: Value(time),
+      triggerAtMillis: Value(triggerAtMillis),
+      createdAtMillis: Value(createdAtMillis ?? now),
+      updatedAtMillis: Value(now),
+    );
+  }
+
+  factory Reminder.fromRecord(ReminderRecord record) => Reminder(
+        id: record.id,
+        title: record.title,
+        time: record.timeLabel,
+        detail: record.detail,
+        type: _enumValue(ReminderType.values, record.type, ReminderType.custom),
+        deliveryMode: _deliveryModeFromName(record.deliveryMode),
+        spokenMessage: record.spokenMessage,
+        tone: _toneFromName(record.toneId),
+        enabled: record.enabled,
+        snoozeMinutes: record.snoozeMinutes,
+        triggerAtMillis: record.triggerAtMillis,
+        createdAtMillis: record.createdAtMillis,
+        updatedAtMillis: record.updatedAtMillis,
       );
 }
 
@@ -71,6 +133,7 @@ class SpeakingClockApp extends StatefulWidget {
 class _SpeakingClockAppState extends State<SpeakingClockApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+  late final AppDatabase _database;
   var _tab = 0;
   var _darkMode = false;
   List<Reminder> _reminders = [
@@ -87,7 +150,9 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
       time: '11:00',
       detail: 'Google Meet · 10 minutes before',
       type: ReminderType.meeting,
-      isAlarm: true,
+      deliveryMode: DeliveryMode.speaking,
+      spokenMessage: 'Design review starts soon.',
+      tone: ToneOption.morningBell,
     ),
     const Reminder(
       id: 'stretch-1200',
@@ -101,31 +166,24 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
   @override
   void initState() {
     super.initState();
+    _database = AppDatabase.open();
     _loadReminders();
   }
 
   Future<void> _loadReminders() async {
-    final preferences = await SharedPreferences.getInstance();
-    final raw = preferences.getString('reminders');
-    if (raw == null || !mounted) return;
-
-    try {
-      final saved = (jsonDecode(raw) as List<dynamic>)
-          .cast<Map<String, dynamic>>()
-          .map(Reminder.fromJson)
-          .toList();
-      setState(() => _reminders = saved);
-    } on FormatException {
-      await preferences.remove('reminders');
+    final saved = await _database.allReminders();
+    if (!mounted) return;
+    if (saved.isEmpty) {
+      await Future.wait(_reminders.map((reminder) => _database.saveReminder(reminder.toCompanion())));
+      return;
     }
+    setState(() => _reminders = saved.map(Reminder.fromRecord).toList());
   }
 
-  Future<void> _saveReminders() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(
-      'reminders',
-      jsonEncode(_reminders.map((reminder) => reminder.toJson()).toList()),
-    );
+  @override
+  void dispose() {
+    _database.close();
+    super.dispose();
   }
 
   Future<void> _showAddReminder({ReminderType initialType = ReminderType.water}) async {
@@ -137,27 +195,84 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     );
     if (reminder != null) {
       setState(() => _reminders = [..._reminders, reminder]);
-      await _saveReminders();
-      if (reminder.isAlarm) await _scheduleReliableAlarm(reminder);
+      await _database.saveReminder(reminder.toCompanion());
+      await _scheduleDeviceReminder(reminder);
     }
+  }
+
+  Future<void> _editReminder(Reminder original) async {
+    final updated = await showModalBottomSheet<Reminder>(
+      context: _navigatorKey.currentState!.context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReminderEditor(initialType: original.type, reminder: original),
+    );
+    if (updated == null) return;
+    await _cancelDeviceReminder(original);
+    setState(() {
+      _reminders = [
+        for (final reminder in _reminders)
+          if (reminder.id == updated.id) updated else reminder,
+      ];
+    });
+    await _database.saveReminder(updated.toCompanion());
+    await _scheduleDeviceReminder(updated);
+  }
+
+  Future<void> _deleteReminder(Reminder reminder) async {
+    await _cancelDeviceReminder(reminder);
+    setState(() => _reminders = _reminders.where((item) => item.id != reminder.id).toList());
+    await _database.deleteReminderById(reminder.id);
+    _navigatorKey.currentState?.pop();
+    _messengerKey.currentState?.showSnackBar(SnackBar(content: Text('${reminder.title} deleted.')));
+  }
+
+  Future<void> _toggleReminder(Reminder reminder, bool enabled) async {
+    if (!enabled) await _cancelDeviceReminder(reminder);
+    final updated = reminder.copyWith(enabled: enabled, updatedAtMillis: DateTime.now().millisecondsSinceEpoch);
+    setState(() {
+      _reminders = [
+        for (final item in _reminders)
+          if (item.id == reminder.id) updated else item,
+      ];
+    });
+    await _database.setReminderEnabled(reminder.id, enabled);
+    if (enabled) await _scheduleDeviceReminder(updated);
+    _messengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('${reminder.title} ${enabled ? 'resumed' : 'paused'}.')),
+    );
   }
 
   void _openReminderDetails(Reminder reminder) {
     _navigatorKey.currentState!.push(
       MaterialPageRoute<void>(
-        builder: (_) => ReminderDetailScreen(reminder: reminder),
+        builder: (_) => ReminderDetailScreen(
+          reminder: reminder,
+          onEdit: () => _editReminder(reminder),
+          onDelete: () => _deleteReminder(reminder),
+          onToggleEnabled: (enabled) => _toggleReminder(reminder, enabled),
+        ),
       ),
     );
   }
 
-  Future<void> _scheduleReliableAlarm(Reminder reminder) async {
-    if (reminder.triggerAtMillis == null) return;
+  Future<void> _scheduleDeviceReminder(Reminder reminder) async {
+    if (!reminder.enabled || reminder.triggerAtMillis == null) return;
     try {
       final readiness = await ReliabilityPlatform.getStatus();
-      if (!readiness.isReady) {
+      final canSchedule = reminder.isSpeakingAlarm
+          ? readiness.canScheduleSpokenAlarms
+          : readiness.canScheduleAlarms;
+      if (!canSchedule) {
         if (mounted) {
           _messengerKey.currentState?.showSnackBar(
-            const SnackBar(content: Text('Reminder saved. Finish Reliable Alarm setup before it can speak.')),
+            SnackBar(
+              content: Text(
+                reminder.isAlarm
+                    ? 'Reminder saved. Finish notification, exact alarm, and alarm volume setup before it can speak.'
+                    : 'Reminder saved. Allow notifications and exact alarms before it can fire.',
+              ),
+            ),
           );
         }
         return;
@@ -166,10 +281,18 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
         id: reminder.id.hashCode & 0x7fffffff,
         triggerAt: DateTime.fromMillisecondsSinceEpoch(reminder.triggerAtMillis!),
         title: reminder.title,
+        alarmStyle: reminder.isAlarm,
+        spoken: reminder.isSpeakingAlarm,
+        spokenMessage: reminder.spokenMessage,
+        toneId: reminder.tone.name,
+        snoozeMinutes: reminder.snoozeMinutes,
       );
       if (mounted) {
+        final dndNote = reminder.isAlarm && !readiness.dndPolicyAccess
+            ? ' Turn on DND access if you want it to break through Do Not Disturb.'
+            : '';
         _messengerKey.currentState?.showSnackBar(
-          const SnackBar(content: Text('Reliable Alarm scheduled.')),
+          SnackBar(content: Text('${_deliveryLabel(reminder.deliveryMode)} scheduled.$dndNote')),
         );
       }
     } on PlatformException catch (error) {
@@ -184,6 +307,16 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
           const SnackBar(content: Text('Reliable Alarm is not available on this platform yet.')),
         );
       }
+    }
+  }
+
+  Future<void> _cancelDeviceReminder(Reminder reminder) async {
+    try {
+      await ReliabilityPlatform.cancelAlarm(id: reminder.id.hashCode & 0x7fffffff);
+    } on PlatformException {
+      // The local database is still the source of truth if Android cancellation fails.
+    } on MissingPluginException {
+      // Non-Android targets do not have the native alarm bridge yet.
     }
   }
 
@@ -282,7 +415,7 @@ class TodayScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final next = reminders.first;
+    final next = reminders.isEmpty ? null : reminders.first;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 108),
       children: [
@@ -303,7 +436,10 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height: 30),
         Text('NEXT UP', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        NextReminderCard(reminder: next, onOpen: () => onOpenReminder(next)),
+        if (next == null)
+          EmptyReminderCard(onAdd: onAdd)
+        else
+          NextReminderCard(reminder: next, onOpen: () => onOpenReminder(next)),
         const SizedBox(height: 28),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -313,7 +449,7 @@ class TodayScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        ...reminders.skip(1).map(
+        ...reminders.skip(next == null ? 0 : 1).map(
               (reminder) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: ReminderRow(reminder: reminder, onTap: () => onOpenReminder(reminder)),
@@ -322,6 +458,36 @@ class TodayScreen extends StatelessWidget {
         const SizedBox(height: 18),
         const ReliabilityNote(),
       ],
+    );
+  }
+}
+
+class EmptyReminderCard extends StatelessWidget {
+  const EmptyReminderCard({super.key, required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.notifications_none_rounded, color: AppColors.sage),
+          const SizedBox(height: 12),
+          Text('No reminders yet', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text('Create a gentle reminder, alarm reminder, or speaking alarm.', style: _subtle(context)),
+          const SizedBox(height: 14),
+          FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Add reminder')),
+        ],
+      ),
     );
   }
 }
@@ -380,6 +546,10 @@ class NextReminderCard extends StatelessWidget {
           Text(reminder.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text(reminder.detail, style: _subtle(context)),
+          if (!reminder.enabled) ...[
+            const SizedBox(height: 8),
+            const Text('Paused', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w800)),
+          ],
           const SizedBox(height: 20),
           FilledButton.tonalIcon(
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
@@ -418,7 +588,13 @@ class ReminderRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(reminder.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  reminder.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: reminder.enabled ? null : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: 3),
                 Text(reminder.detail, style: _subtle(context, small: true)),
               ],
@@ -428,7 +604,10 @@ class ReminderRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(reminder.time, style: const TextStyle(fontWeight: FontWeight.w800)),
-              if (reminder.isAlarm) const Padding(padding: EdgeInsets.only(top: 4), child: Icon(Icons.volume_up_rounded, size: 15, color: AppColors.amber)),
+              if (!reminder.enabled)
+                const Padding(padding: EdgeInsets.only(top: 4), child: Icon(Icons.pause_circle_outline_rounded, size: 16, color: AppColors.amber))
+              else if (reminder.isAlarm)
+                const Padding(padding: EdgeInsets.only(top: 4), child: Icon(Icons.volume_up_rounded, size: 15, color: AppColors.amber)),
             ],
           ),
         ],
@@ -732,6 +911,13 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
                   actionLabel: 'Open settings',
                 ),
                 _ReadinessItem(
+                  title: 'Full-screen alarms',
+                  detail: 'Let alarms take over the lock screen',
+                  ready: _readiness?.fullScreenIntentEnabled ?? false,
+                  action: () => _perform(ReliabilityPlatform.openFullScreenIntentSettings),
+                  actionLabel: 'Open settings',
+                ),
+                _ReadinessItem(
                   title: 'Alarm volume',
                   detail: 'Keep alarm volume above zero',
                   ready: _readiness?.alarmVolumeEnabled ?? false,
@@ -774,14 +960,33 @@ class _ReadinessItem extends StatelessWidget {
 }
 
 class ReminderDetailScreen extends StatelessWidget {
-  const ReminderDetailScreen({super.key, required this.reminder});
+  const ReminderDetailScreen({
+    super.key,
+    required this.reminder,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggleEnabled,
+  });
 
   final Reminder reminder;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final ValueChanged<bool> onToggleEnabled;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reminder details')),
+      appBar: AppBar(
+        title: const Text('Reminder details'),
+        actions: [
+          IconButton(tooltip: 'Edit reminder', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+          IconButton(
+            tooltip: 'Delete reminder',
+            onPressed: () => _confirmDelete(context),
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -793,7 +998,25 @@ class ReminderDetailScreen extends StatelessWidget {
           const SizedBox(height: 28),
           _DetailCard(label: 'Schedule', value: reminder.detail),
           const SizedBox(height: 10),
-          _DetailCard(label: 'Delivery', value: reminder.isAlarm ? 'Reliable spoken alarm' : 'Gentle reminder'),
+          _DetailCard(label: 'Delivery', value: _deliveryLabel(reminder.deliveryMode)),
+          const SizedBox(height: 10),
+          _DetailCard(label: 'Tone', value: _toneLabel(reminder.tone)),
+          if (reminder.isSpeakingAlarm) ...[
+            const SizedBox(height: 10),
+            _DetailCard(label: 'Spoken message', value: reminder.spokenMessage.isEmpty ? 'It is time for ${reminder.title}' : reminder.spokenMessage),
+          ],
+          const SizedBox(height: 10),
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(18),
+            child: SwitchListTile.adaptive(
+              value: reminder.enabled,
+              onChanged: onToggleEnabled,
+              secondary: Icon(reminder.enabled ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded),
+              title: const Text('Enabled', style: TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(reminder.enabled ? 'This reminder can fire' : 'Paused reminders stay saved but do not fire'),
+            ),
+          ),
           const SizedBox(height: 28),
           if (reminder.type == ReminderType.meeting)
             FilledButton.icon(
@@ -810,6 +1033,21 @@ class ReminderDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final delete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete reminder?'),
+        content: Text('${reminder.title} will be removed from Speaking Clock.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (delete == true) onDelete();
   }
 }
 
@@ -830,9 +1068,10 @@ class _DetailCard extends StatelessWidget {
 }
 
 class ReminderEditor extends StatefulWidget {
-  const ReminderEditor({super.key, required this.initialType});
+  const ReminderEditor({super.key, required this.initialType, this.reminder});
 
   final ReminderType initialType;
+  final Reminder? reminder;
 
   @override
   State<ReminderEditor> createState() => _ReminderEditorState();
@@ -840,20 +1079,36 @@ class ReminderEditor extends StatefulWidget {
 
 class _ReminderEditorState extends State<ReminderEditor> {
   final _controller = TextEditingController();
+  final _spokenController = TextEditingController();
+  static const _repeatOptions = ['Once', 'Every day', 'Weekdays', 'Every 90 min'];
   late ReminderType _type;
-  var _isAlarm = false;
+  late DeliveryMode _deliveryMode;
+  late ToneOption _tone;
   var _frequency = 'Every day';
   var _time = const TimeOfDay(hour: 10, minute: 30);
+  var _snoozeMinutes = 10;
 
   @override
   void initState() {
     super.initState();
-    _type = widget.initialType;
+    final reminder = widget.reminder;
+    _type = reminder?.type ?? widget.initialType;
+    _deliveryMode = reminder?.deliveryMode ?? DeliveryMode.gentle;
+    _tone = reminder?.tone ?? ToneOption.softChime;
+    _snoozeMinutes = reminder?.snoozeMinutes ?? 10;
+    if (reminder != null) {
+      _controller.text = reminder.title;
+      _spokenController.text = reminder.spokenMessage;
+      final savedRepeat = reminder.detail.split(' · ').first;
+      _frequency = _repeatOptions.contains(savedRepeat) ? savedRepeat : 'Every day';
+      _time = _parseTimeLabel(reminder.time) ?? _time;
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _spokenController.dispose();
     super.dispose();
   }
 
@@ -867,16 +1122,24 @@ class _ReminderEditorState extends State<ReminderEditor> {
     final now = DateTime.now();
     var triggerAt = DateTime(now.year, now.month, now.day, _time.hour, _time.minute);
     if (!triggerAt.isAfter(now)) triggerAt = triggerAt.add(const Duration(days: 1));
+    final reminder = widget.reminder;
+    final spokenMessage = _spokenController.text.trim();
     Navigator.pop(
       context,
       Reminder(
-        id: '${now.microsecondsSinceEpoch}',
+        id: reminder?.id ?? '${now.microsecondsSinceEpoch}',
         title: title,
         time: _time.format(context),
-        detail: '$_frequency · ${_isAlarm ? 'Reliable Alarm' : 'Gentle reminder'}',
+        detail: '$_frequency · ${_deliveryLabel(_deliveryMode)}',
         type: _type,
-        isAlarm: _isAlarm,
+        deliveryMode: _deliveryMode,
+        spokenMessage: spokenMessage,
+        tone: _tone,
+        enabled: reminder?.enabled ?? true,
+        snoozeMinutes: _snoozeMinutes,
         triggerAtMillis: triggerAt.millisecondsSinceEpoch,
+        createdAtMillis: reminder?.createdAtMillis ?? now.millisecondsSinceEpoch,
+        updatedAtMillis: now.millisecondsSinceEpoch,
       ),
     );
   }
@@ -898,7 +1161,7 @@ class _ReminderEditorState extends State<ReminderEditor> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('New reminder', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(widget.reminder == null ? 'New reminder' : 'Edit reminder', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
                   IconButton(
                     tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
@@ -915,19 +1178,55 @@ class _ReminderEditorState extends State<ReminderEditor> {
                 children: ReminderType.values.map((type) => ChoiceChip(label: Text(_label(type)), selected: type == _type, onSelected: (_) => setState(() => _type = type))).toList(),
               ),
               const SizedBox(height: 18),
+              Text('Delivery', style: _sectionLabel(context)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: DeliveryMode.values
+                    .map((mode) => ChoiceChip(
+                          label: Text(_deliveryLabel(mode)),
+                          selected: mode == _deliveryMode,
+                          onSelected: (_) => setState(() => _deliveryMode = mode),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 18),
               Row(children: [
                 Expanded(child: OutlinedButton.icon(onPressed: _pickTime, icon: const Icon(Icons.schedule_outlined), label: Text(_time.format(context)))),
                 const SizedBox(width: 10),
-                Expanded(child: DropdownButtonFormField<String>(initialValue: _frequency, decoration: const InputDecoration(labelText: 'Repeat', border: OutlineInputBorder()), items: const ['Once', 'Every day', 'Weekdays', 'Every 90 min'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _frequency = value ?? _frequency))),
+                Expanded(child: DropdownButtonFormField<String>(initialValue: _frequency, decoration: const InputDecoration(labelText: 'Repeat', border: OutlineInputBorder()), items: _repeatOptions.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _frequency = value ?? _frequency))),
               ]),
               const SizedBox(height: 12),
-              Material(
-                color: AppColors.sageLight,
-                borderRadius: BorderRadius.circular(16),
-                child: SwitchListTile.adaptive(value: _isAlarm, onChanged: (value) => setState(() => _isAlarm = value), secondary: const Icon(Icons.volume_up_outlined, color: AppColors.amber), title: const Text('Reliable Alarm', style: TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('Use spoken alarm for important reminders')),
+              DropdownButtonFormField<ToneOption>(
+                initialValue: _tone,
+                decoration: const InputDecoration(labelText: 'Tone', border: OutlineInputBorder()),
+                items: ToneOption.values.map((tone) => DropdownMenuItem(value: tone, child: Text(_toneLabel(tone)))).toList(),
+                onChanged: (value) => setState(() => _tone = value ?? _tone),
+              ),
+              if (_deliveryMode == DeliveryMode.speaking) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _spokenController,
+                  minLines: 2,
+                  maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'What should it speak?',
+                    hintText: 'It is time for ${_controller.text.trim().isEmpty ? 'this reminder' : _controller.text.trim()}',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: _snoozeMinutes,
+                decoration: const InputDecoration(labelText: 'Snooze', border: OutlineInputBorder()),
+                items: const [5, 10, 15, 30].map((value) => DropdownMenuItem(value: value, child: Text('$value minutes'))).toList(),
+                onChanged: (value) => setState(() => _snoozeMinutes = value ?? _snoozeMinutes),
               ),
               const SizedBox(height: 18),
-              SizedBox(width: double.infinity, child: FilledButton(onPressed: _save, child: const Text('Save reminder'))),
+              SizedBox(width: double.infinity, child: FilledButton(onPressed: _save, child: Text(widget.reminder == null ? 'Save reminder' : 'Save changes'))),
             ],
           ),
         ),
@@ -946,3 +1245,51 @@ String _label(ReminderType type) => switch (type) {
       ReminderType.medication => 'Medication',
       ReminderType.custom => 'Custom',
     };
+
+String _deliveryLabel(DeliveryMode mode) => switch (mode) {
+      DeliveryMode.gentle => 'Gentle Reminder',
+      DeliveryMode.alarm => 'Alarm Reminder',
+      DeliveryMode.speaking => 'Speaking Alarm',
+    };
+
+String _toneLabel(ToneOption tone) => switch (tone) {
+      ToneOption.softChime => 'Soft Chime',
+      ToneOption.classicAlarm => 'Classic Alarm',
+      ToneOption.digitalBeep => 'Digital Beep',
+      ToneOption.morningBell => 'Morning Bell',
+      ToneOption.calmWater => 'Calm Water',
+      ToneOption.vibrationOnly => 'Vibration Only',
+    };
+
+T _enumValue<T>(List<T> values, int index, T fallback) {
+  if (index < 0 || index >= values.length) return fallback;
+  return values[index];
+}
+
+DeliveryMode _deliveryModeFromName(String name) {
+  return DeliveryMode.values.firstWhere(
+    (mode) => mode.name == name,
+    orElse: () => DeliveryMode.gentle,
+  );
+}
+
+ToneOption _toneFromName(String name) {
+  return ToneOption.values.firstWhere(
+    (tone) => tone.name == name,
+    orElse: () => ToneOption.softChime,
+  );
+}
+
+TimeOfDay? _parseTimeLabel(String value) {
+  final normalized = value.trim().toUpperCase();
+  final match = RegExp(r'^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$').firstMatch(normalized);
+  if (match == null) return null;
+  var hour = int.tryParse(match.group(1) ?? '');
+  final minute = int.tryParse(match.group(2) ?? '');
+  if (hour == null || minute == null || minute > 59) return null;
+  final period = match.group(3);
+  if (period == 'PM' && hour < 12) hour += 12;
+  if (period == 'AM' && hour == 12) hour = 0;
+  if (hour > 23) return null;
+  return TimeOfDay(hour: hour, minute: minute);
+}
