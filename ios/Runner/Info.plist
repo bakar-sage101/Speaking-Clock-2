@@ -8,6 +8,8 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>Speaking Clock</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>Speaking Clock schedules the alarms you explicitly create for important reminders.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
