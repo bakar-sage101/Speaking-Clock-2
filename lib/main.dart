@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'platform/reliability_platform.dart';
@@ -22,33 +23,41 @@ enum ReminderType { water, breakTime, meeting, medication, custom }
 
 class Reminder {
   const Reminder({
+    required this.id,
     required this.title,
     required this.time,
     required this.detail,
     required this.type,
     this.isAlarm = false,
+    this.triggerAtMillis,
   });
 
+  final String id;
   final String title;
   final String time;
   final String detail;
   final ReminderType type;
   final bool isAlarm;
+  final int? triggerAtMillis;
 
-  Map<String, Object> toJson() => {
+  Map<String, Object?> toJson() => {
+        'id': id,
         'title': title,
         'time': time,
         'detail': detail,
         'type': type.index,
         'isAlarm': isAlarm,
+        'triggerAtMillis': triggerAtMillis,
       };
 
   factory Reminder.fromJson(Map<String, dynamic> json) => Reminder(
+        id: json['id'] as String? ?? '${json['title']}-${json['time']}',
         title: json['title'] as String,
         time: json['time'] as String,
         detail: json['detail'] as String,
         type: ReminderType.values[json['type'] as int],
         isAlarm: json['isAlarm'] as bool? ?? false,
+        triggerAtMillis: json['triggerAtMillis'] as int?,
       );
 }
 
@@ -64,12 +73,14 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
   var _darkMode = false;
   List<Reminder> _reminders = [
     const Reminder(
+      id: 'water-1030',
       title: 'Drink water',
       time: '10:30',
       detail: 'Every 90 minutes · Gentle reminder',
       type: ReminderType.water,
     ),
     const Reminder(
+      id: 'meeting-1100',
       title: 'Design review',
       time: '11:00',
       detail: 'Google Meet · 10 minutes before',
@@ -77,6 +88,7 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
       isAlarm: true,
     ),
     const Reminder(
+      id: 'stretch-1200',
       title: 'Stand and stretch',
       time: '12:00',
       detail: 'Weekdays · Every 2 hours',
@@ -124,6 +136,44 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     if (reminder != null) {
       setState(() => _reminders = [..._reminders, reminder]);
       await _saveReminders();
+      if (reminder.isAlarm) await _scheduleReliableAlarm(reminder);
+    }
+  }
+
+  Future<void> _scheduleReliableAlarm(Reminder reminder) async {
+    if (reminder.triggerAtMillis == null) return;
+    try {
+      final readiness = await ReliabilityPlatform.getStatus();
+      if (!readiness.isReady) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Reminder saved. Finish Reliable Alarm setup before it can speak.')),
+          );
+        }
+        return;
+      }
+      await ReliabilityPlatform.scheduleAlarm(
+        id: reminder.id.hashCode & 0x7fffffff,
+        triggerAt: DateTime.fromMillisecondsSinceEpoch(reminder.triggerAtMillis!),
+        title: reminder.title,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reliable Alarm scheduled.')),
+        );
+      }
+    } on PlatformException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message ?? 'Reliable Alarm could not be scheduled.')),
+        );
+      }
+    } on MissingPluginException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reliable Alarm is not available on this platform yet.')),
+        );
+      }
     }
   }
 
@@ -701,14 +751,19 @@ class _ReminderEditorState extends State<ReminderEditor> {
 
   void _save() {
     final title = _controller.text.trim().isEmpty ? 'Drink water' : _controller.text.trim();
+    final now = DateTime.now();
+    var triggerAt = DateTime(now.year, now.month, now.day, _time.hour, _time.minute);
+    if (!triggerAt.isAfter(now)) triggerAt = triggerAt.add(const Duration(days: 1));
     Navigator.pop(
       context,
       Reminder(
+        id: '${now.microsecondsSinceEpoch}',
         title: title,
         time: _time.format(context),
         detail: '$_frequency · ${_isAlarm ? 'Reliable Alarm' : 'Gentle reminder'}',
         type: _type,
         isAlarm: _isAlarm,
+        triggerAtMillis: triggerAt.millisecondsSinceEpoch,
       ),
     );
   }

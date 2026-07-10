@@ -28,6 +28,8 @@ import UserNotifications
         self.requestAlarmAuthorization(result: result)
       case "openDndSettings":
         self.openAppSettings(result: result)
+      case "scheduleAlarm":
+        result(FlutterError(code: "ios_alarm_scheduling_pending", message: "AlarmKit scheduling is not available in this build yet.", details: nil))
       default:
         result(FlutterMethodNotImplemented)
       }
