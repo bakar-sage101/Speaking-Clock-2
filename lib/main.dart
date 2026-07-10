@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'platform/reliability_platform.dart';
+
 void main() => runApp(const SpeakingClockApp());
 
 class AppColors {
@@ -12,6 +14,7 @@ class AppColors {
   static const sageLight = Color(0xffe6eee7);
   static const blue = Color(0xff87a8b0);
   static const amber = Color(0xffc88945);
+  static const amberLight = Color(0xfffff2df);
   static const line = Color(0xffe6e8e4);
 }
 
@@ -150,6 +153,11 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
               SettingsScreen(
                 darkMode: _darkMode,
                 onDarkModeChanged: (value) => setState(() => _darkMode = value),
+                onOpenReliability: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ReliabilityScreen(),
+                  ),
+                ),
               ),
             ],
           ),
@@ -249,15 +257,15 @@ class ReadinessChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.sageLight,
+        color: AppColors.amberLight,
         borderRadius: BorderRadius.circular(30),
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_rounded, size: 16, color: AppColors.sage),
+          Icon(Icons.info_outline_rounded, size: 16, color: AppColors.amber),
           SizedBox(width: 5),
-          Text('Ready', style: TextStyle(color: AppColors.sage, fontWeight: FontWeight.w800)),
+          Text('Needs setup', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -389,7 +397,7 @@ class ReliabilityNote extends StatelessWidget {
         children: [
           Icon(Icons.verified_user_outlined, color: AppColors.sage),
           SizedBox(width: 10),
-          Expanded(child: Text('Reliable Alarm is ready. Important reminders can use a spoken alarm when you choose it.', style: TextStyle(height: 1.35))),
+          Expanded(child: Text('Set up Reliable Alarm before using it for important reminders. We will check the required device permissions for you.', style: TextStyle(height: 1.35))),
         ],
       ),
     );
@@ -452,10 +460,16 @@ class RoutinePreset extends StatelessWidget {
 }
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, required this.darkMode, required this.onDarkModeChanged});
+  const SettingsScreen({
+    super.key,
+    required this.darkMode,
+    required this.onDarkModeChanged,
+    required this.onOpenReliability,
+  });
 
   final bool darkMode;
   final ValueChanged<bool> onDarkModeChanged;
+  final VoidCallback onOpenReliability;
 
   @override
   Widget build(BuildContext context) {
@@ -466,7 +480,7 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 28),
         Text('RELIABILITY', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        const SettingTile(icon: Icons.verified_user_outlined, title: 'Reliable Alarm', subtitle: 'Ready on this device'),
+        SettingTile(icon: Icons.verified_user_outlined, title: 'Reliable Alarm', subtitle: 'Finish setup on this device', onTap: onOpenReliability),
         const SizedBox(height: 10),
         const SettingTile(icon: Icons.calendar_month_outlined, title: 'Google Calendar', subtitle: 'Connect your meetings'),
         const SizedBox(height: 30),
@@ -495,11 +509,12 @@ class SettingsScreen extends StatelessWidget {
 }
 
 class SettingTile extends StatelessWidget {
-  const SettingTile({super.key, required this.icon, required this.title, required this.subtitle});
+  const SettingTile({super.key, required this.icon, required this.title, required this.subtitle, this.onTap});
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -511,7 +526,149 @@ class SettingTile extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () {},
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class ReliabilityScreen extends StatefulWidget {
+  const ReliabilityScreen({super.key});
+
+  @override
+  State<ReliabilityScreen> createState() => _ReliabilityScreenState();
+}
+
+class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindingObserver {
+  AlarmReadiness? _readiness;
+  Object? _error;
+  var _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final readiness = await ReliabilityPlatform.getStatus();
+      if (mounted) setState(() => _readiness = readiness);
+    } on Object catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _perform(Future<void> Function() action) async {
+    await action();
+    await _refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _readiness?.isReady ?? false;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Reliable Alarm')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: ready ? AppColors.sageLight : AppColors.amberLight,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(ready ? Icons.verified_rounded : Icons.info_outline_rounded, color: ready ? AppColors.sage : AppColors.amber, size: 28),
+                      const SizedBox(height: 12),
+                      Text(ready ? 'Reliable Alarm is ready' : 'Finish setup for Reliable Alarm', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 6),
+                      Text(ready ? 'Important reminders can use Android’s alarm channel and spoken voice.' : 'Complete each item below before relying on a spoken alarm.'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 26),
+                if (_error != null) Text('Unable to read device status: $_error'),
+                _ReadinessItem(
+                  title: 'Notifications',
+                  detail: 'Allow Speaking Clock notifications',
+                  ready: _readiness?.notificationsEnabled ?? false,
+                  action: () => _perform(ReliabilityPlatform.requestNotifications),
+                  actionLabel: 'Allow',
+                ),
+                _ReadinessItem(
+                  title: 'Exact alarms',
+                  detail: 'Let important alarms fire at their exact time',
+                  ready: _readiness?.exactAlarmEnabled ?? false,
+                  action: () => _perform(ReliabilityPlatform.requestExactAlarms),
+                  actionLabel: 'Allow',
+                ),
+                _ReadinessItem(
+                  title: 'Do Not Disturb',
+                  detail: 'Allow alarm behavior during Do Not Disturb',
+                  ready: _readiness?.dndPolicyAccess ?? false,
+                  action: () => _perform(ReliabilityPlatform.openDndSettings),
+                  actionLabel: 'Open settings',
+                ),
+                _ReadinessItem(
+                  title: 'Alarm volume',
+                  detail: 'Keep alarm volume above zero',
+                  ready: _readiness?.alarmVolumeEnabled ?? false,
+                  action: _refresh,
+                  actionLabel: 'Check again',
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(onPressed: _refresh, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh device status')),
+              ],
+            ),
+    );
+  }
+}
+
+class _ReadinessItem extends StatelessWidget {
+  const _ReadinessItem({required this.title, required this.detail, required this.ready, required this.action, required this.actionLabel});
+
+  final String title;
+  final String detail;
+  final bool ready;
+  final VoidCallback action;
+  final String actionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        child: ListTile(
+          leading: Icon(ready ? Icons.check_circle_rounded : Icons.circle_outlined, color: ready ? AppColors.sage : AppColors.amber),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          subtitle: Text(detail),
+          trailing: ready ? const Text('Ready', style: TextStyle(color: AppColors.sage, fontWeight: FontWeight.w800)) : TextButton(onPressed: action, child: Text(actionLabel)),
+        ),
       ),
     );
   }

@@ -1,5 +1,93 @@
 package com.example.speaking_clock
 
+import android.app.AlarmManager
+import android.content.Intent
+import android.media.AudioManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity()
+class MainActivity : FlutterActivity() {
+    private val channelName = "speaking_clock/reliability"
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getStatus" -> result.success(AlarmReadiness.status(this))
+                    "requestNotifications" -> requestNotifications(result)
+                    "requestExactAlarms" -> requestExactAlarms(result)
+                    "openDndSettings" -> openDndSettings(result)
+                    "scheduleAlarm" -> scheduleAlarm(call.arguments as? Map<*, *>, result)
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun requestNotifications(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 901)
+        }
+        result.success(null)
+    }
+
+    private fun requestExactAlarms(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:$packageName")
+                },
+            )
+        }
+        result.success(null)
+    }
+
+    private fun openDndSettings(result: MethodChannel.Result) {
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        result.success(null)
+    }
+
+    private fun scheduleAlarm(arguments: Map<*, *>?, result: MethodChannel.Result) {
+        val id = arguments?.get("id") as? Int
+        val triggerAtMillis = arguments?.get("triggerAtMillis") as? Long
+        val title = arguments?.get("title") as? String
+        if (id == null || triggerAtMillis == null || title == null) {
+            result.error("invalid_arguments", "An id, title, and trigger time are required.", null)
+            return
+        }
+        if (!AlarmReadiness.canScheduleExactAlarms(this)) {
+            result.error("exact_alarm_unavailable", "Exact alarm access has not been granted.", null)
+            return
+        }
+        AlarmScheduler.schedule(this, id, triggerAtMillis, title)
+        result.success(null)
+    }
+}
+
+object AlarmReadiness {
+    fun canScheduleExactAlarms(context: android.content.Context): Boolean {
+        val manager = context.getSystemService(AlarmManager::class.java)
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
+    }
+
+    fun status(context: android.content.Context): Map<String, Any> {
+        val notificationsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            context.getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()
+        } else {
+            true
+        }
+        val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+        val audioManager = context.getSystemService(AudioManager::class.java)
+        return mapOf(
+            "platform" to "android",
+            "notificationsEnabled" to notificationsEnabled,
+            "exactAlarmEnabled" to canScheduleExactAlarms(context),
+            "dndPolicyAccess" to notificationManager.isNotificationPolicyAccessGranted,
+            "alarmVolumeEnabled" to (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0),
+        )
+    }
+}
