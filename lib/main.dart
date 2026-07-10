@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const SpeakingClockApp());
 
@@ -28,6 +31,22 @@ class Reminder {
   final String detail;
   final ReminderType type;
   final bool isAlarm;
+
+  Map<String, Object> toJson() => {
+        'title': title,
+        'time': time,
+        'detail': detail,
+        'type': type.index,
+        'isAlarm': isAlarm,
+      };
+
+  factory Reminder.fromJson(Map<String, dynamic> json) => Reminder(
+        title: json['title'] as String,
+        time: json['time'] as String,
+        detail: json['detail'] as String,
+        type: ReminderType.values[json['type'] as int],
+        isAlarm: json['isAlarm'] as bool? ?? false,
+      );
 }
 
 class SpeakingClockApp extends StatefulWidget {
@@ -40,7 +59,7 @@ class SpeakingClockApp extends StatefulWidget {
 class _SpeakingClockAppState extends State<SpeakingClockApp> {
   var _tab = 0;
   var _darkMode = false;
-  final _reminders = <Reminder>[
+  List<Reminder> _reminders = [
     const Reminder(
       title: 'Drink water',
       time: '10:30',
@@ -62,6 +81,36 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _loadReminders();
+  }
+
+  Future<void> _loadReminders() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString('reminders');
+    if (raw == null || !mounted) return;
+
+    try {
+      final saved = (jsonDecode(raw) as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .map(Reminder.fromJson)
+          .toList();
+      setState(() => _reminders = saved);
+    } on FormatException {
+      await preferences.remove('reminders');
+    }
+  }
+
+  Future<void> _saveReminders() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      'reminders',
+      jsonEncode(_reminders.map((reminder) => reminder.toJson()).toList()),
+    );
+  }
+
   Future<void> _showAddReminder() async {
     final reminder = await showModalBottomSheet<Reminder>(
       context: context,
@@ -69,7 +118,10 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> {
       backgroundColor: Colors.transparent,
       builder: (_) => const ReminderEditor(),
     );
-    if (reminder != null) setState(() => _reminders.add(reminder));
+    if (reminder != null) {
+      setState(() => _reminders = [..._reminders, reminder]);
+      await _saveReminders();
+    }
   }
 
   @override
