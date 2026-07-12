@@ -69,6 +69,7 @@ class ReliabilityPlatform {
     required String spokenMessage,
     required String toneId,
     required int snoozeMinutes,
+    required String repeatRule,
   }) =>
       _channel.invokeMethod<void>('scheduleAlarm', {
         'id': id,
@@ -79,6 +80,7 @@ class ReliabilityPlatform {
         'spokenMessage': spokenMessage,
         'toneId': toneId,
         'snoozeMinutes': snoozeMinutes,
+        'repeatRule': repeatRule,
       });
 
   static Future<void> cancelAlarm({required int id}) =>

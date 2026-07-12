@@ -15,6 +15,11 @@ class AlarmReceiver : BroadcastReceiver() {
         val spokenMessage = intent.getStringExtra(extraSpokenMessage) ?: ""
         val toneId = intent.getStringExtra(extraToneId) ?: "softChime"
         val snoozeMinutes = intent.getIntExtra(extraSnoozeMinutes, 10)
+        val repeatRule = intent.getStringExtra(extraRepeatRule) ?: "Once"
+        val triggerAtMillis = intent.getLongExtra(extraTriggerAtMillis, System.currentTimeMillis())
+        ScheduledAlarmStore.nextTriggerAfter(triggerAtMillis, repeatRule)?.let { nextTrigger ->
+            AlarmScheduler.schedule(context, id, nextTrigger, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule)
+        } ?: ScheduledAlarmStore.remove(context, id)
         if (!alarmStyle) {
             AlarmNotificationHelper.showGentleReminder(context, id, title)
             return
@@ -34,7 +39,7 @@ class AlarmReceiver : BroadcastReceiver() {
         }
         try {
             context.startActivity(
-                AlarmActivity.intent(context, id, title, spoken, spokenMessage, toneId, snoozeMinutes).apply {
+                AlarmActivity.intent(context, id, title, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 },
             )
@@ -53,6 +58,8 @@ class AlarmReceiver : BroadcastReceiver() {
         const val extraSpokenMessage = "spoken_message"
         const val extraToneId = "tone_id"
         const val extraSnoozeMinutes = "snooze_minutes"
+        const val extraRepeatRule = "repeat_rule"
+        const val extraTriggerAtMillis = "trigger_at_millis"
         private const val tag = "SpeakingClockAlarm"
     }
 }

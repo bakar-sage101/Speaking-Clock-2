@@ -4,6 +4,7 @@ import 'package:speaking_clock/main.dart';
 void main() {
   testWidgets('shows the Today experience', (tester) async {
     await tester.pumpWidget(const SpeakingClockApp());
+    await tester.pumpAndSettle();
 
     expect(find.text('Good morning'), findsOneWidget);
     expect(find.text('Drink water'), findsOneWidget);
@@ -12,6 +13,7 @@ void main() {
 
   testWidgets('opens the editor from add reminder and routine presets', (tester) async {
     await tester.pumpWidget(const SpeakingClockApp());
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add reminder'));
     await tester.pumpAndSettle();

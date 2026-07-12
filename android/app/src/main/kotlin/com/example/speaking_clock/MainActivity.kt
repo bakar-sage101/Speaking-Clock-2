@@ -49,7 +49,17 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun openDndSettings(result: MethodChannel.Result) {
-        startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        AlarmNotificationHelper.ensureChannels(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startActivity(
+                Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                    putExtra(Settings.EXTRA_CHANNEL_ID, AlarmNotificationHelper.reliableChannelId)
+                },
+            )
+        } else {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        }
         result.success(null)
     }
 
@@ -79,6 +89,7 @@ class MainActivity : FlutterActivity() {
         val spokenMessage = arguments?.get("spokenMessage") as? String ?: ""
         val toneId = arguments?.get("toneId") as? String ?: "softChime"
         val snoozeMinutes = arguments?.get("snoozeMinutes") as? Int ?: 10
+        val repeatRule = arguments?.get("repeatRule") as? String ?: "Once"
         if (id == null || triggerAtMillis == null || title == null) {
             result.error("invalid_arguments", "An id, title, and trigger time are required.", null)
             return
@@ -88,7 +99,7 @@ class MainActivity : FlutterActivity() {
             return
         }
         AlarmNotificationHelper.ensureChannels(this)
-        AlarmScheduler.schedule(this, id, triggerAtMillis, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes)
+        AlarmScheduler.schedule(this, id, triggerAtMillis, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule)
         result.success(null)
     }
 
@@ -110,6 +121,7 @@ object AlarmReadiness {
     }
 
     fun status(context: android.content.Context): Map<String, Any> {
+        AlarmNotificationHelper.ensureChannels(context)
         val notificationsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             context.getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()
         } else {
@@ -122,11 +134,16 @@ object AlarmReadiness {
         } else {
             true
         }
+        val reliableAlarmCanBypassDnd = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager.getNotificationChannel(AlarmNotificationHelper.reliableChannelId)?.canBypassDnd() ?: false
+        } else {
+            true
+        }
         return mapOf(
             "platform" to "android",
             "notificationsEnabled" to notificationsEnabled,
             "exactAlarmEnabled" to canScheduleExactAlarms(context),
-            "dndPolicyAccess" to notificationManager.isNotificationPolicyAccessGranted,
+            "dndPolicyAccess" to reliableAlarmCanBypassDnd,
             "alarmVolumeEnabled" to (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0),
             "fullScreenIntentEnabled" to fullScreenIntentEnabled,
         )
