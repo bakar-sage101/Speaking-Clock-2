@@ -24,9 +24,12 @@ class AlarmReadiness {
       alarmVolumeEnabled &&
       fullScreenIntentEnabled;
 
-  bool get canScheduleAlarms => notificationsEnabled && exactAlarmEnabled;
+  bool get canScheduleGentleReminders => notificationsEnabled && exactAlarmEnabled;
 
-  bool get canScheduleSpokenAlarms => canScheduleAlarms && alarmVolumeEnabled;
+  bool get canScheduleReliableAlarms =>
+      notificationsEnabled && exactAlarmEnabled && alarmVolumeEnabled;
+
+  bool get canScheduleSpokenAlarms => canScheduleReliableAlarms;
 
   factory AlarmReadiness.fromMap(Map<Object?, Object?> values) => AlarmReadiness(
         platform: values['platform'] as String? ?? 'unknown',

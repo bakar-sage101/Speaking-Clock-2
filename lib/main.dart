@@ -294,18 +294,16 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
     if (!reminder.enabled || reminder.triggerAtMillis == null) return;
     try {
       final readiness = await ReliabilityPlatform.getStatus();
-      final canSchedule = reminder.isSpeakingAlarm
-          ? readiness.canScheduleSpokenAlarms
-          : readiness.canScheduleAlarms;
+      final canSchedule = switch (reminder.deliveryMode) {
+        DeliveryMode.gentle => readiness.canScheduleGentleReminders,
+        DeliveryMode.alarm || DeliveryMode.speaking => readiness.canScheduleReliableAlarms,
+      };
       if (!canSchedule) {
+        await _cancelDeviceReminder(reminder);
         if (mounted) {
           _messengerKey.currentState?.showSnackBar(
             SnackBar(
-              content: Text(
-                reminder.isAlarm
-                    ? 'Reminder saved. Finish notification, exact alarm, and alarm volume setup before it can speak.'
-                    : 'Reminder saved. Allow notifications and exact alarms before it can fire.',
-              ),
+              content: Text(_scheduleBlockedMessage(reminder, readiness)),
             ),
           );
         }
@@ -324,7 +322,7 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
       );
       if (mounted) {
         final dndNote = reminder.isAlarm && !readiness.dndPolicyAccess
-            ? ' Turn on DND access if you want it to break through Do Not Disturb.'
+            ? ' Allow Reliable alarms to interrupt DND for the safest behavior.'
             : '';
         _messengerKey.currentState?.showSnackBar(
           SnackBar(content: Text('${_deliveryLabel(reminder.deliveryMode)} scheduled.$dndNote')),
@@ -386,6 +384,11 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
                 reminders: _reminders,
                 onAdd: _showAddReminder,
                 onOpenReminder: _openReminderDetails,
+                onOpenReliability: () => _navigatorKey.currentState!.push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ReliabilityScreen(),
+                  ),
+                ).then((_) => _refreshReadiness()),
                 readiness: _readiness,
               ),
               RoutinesScreen(
@@ -554,7 +557,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
         _OnboardingPage(
           icon: Icons.volume_up_outlined,
           title: 'Check alarm volume',
-          body: 'Keep alarm volume above zero. Speaking Clock can ring loudly only if Android’s alarm volume is not muted.',
+          body: 'Keep alarm volume above the lowest level. Speaking Clock can speak and ring only when Android’s alarm volume is safely audible.',
           ready: _readiness?.alarmVolumeEnabled,
           primaryLabel: _readiness?.alarmVolumeEnabled == true ? 'Volume ready' : 'Check again',
           onPrimary: _readiness?.alarmVolumeEnabled == true ? _next : () => _run(_refresh),
@@ -700,12 +703,14 @@ class TodayScreen extends StatelessWidget {
     required this.reminders,
     required this.onAdd,
     required this.onOpenReminder,
+    required this.onOpenReliability,
     required this.readiness,
   });
 
   final List<Reminder> reminders;
   final VoidCallback onAdd;
   final ValueChanged<Reminder> onOpenReminder;
+  final VoidCallback onOpenReliability;
   final AlarmReadiness? readiness;
 
   @override
@@ -752,7 +757,10 @@ class TodayScreen extends StatelessWidget {
             ),
         const SizedBox(height: 18),
         if (_readinessWarnings(readiness).isNotEmpty) ...[
-          PermissionWarningCard(messages: _readinessWarnings(readiness)),
+          PermissionWarningCard(
+            messages: _readinessWarnings(readiness),
+            onReview: onOpenReliability,
+          ),
           const SizedBox(height: 12),
         ],
         const ReliabilityNote(),
@@ -762,9 +770,10 @@ class TodayScreen extends StatelessWidget {
 }
 
 class PermissionWarningCard extends StatelessWidget {
-  const PermissionWarningCard({super.key, required this.messages});
+  const PermissionWarningCard({super.key, required this.messages, required this.onReview});
 
   final List<String> messages;
+  final VoidCallback onReview;
 
   @override
   Widget build(BuildContext context) {
@@ -787,6 +796,12 @@ class PermissionWarningCard extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 3),
                     child: Text('• $message', style: const TextStyle(height: 1.3)),
                   ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: onReview,
+                  icon: const Icon(Icons.shield_outlined),
+                  label: const Text('Review setup'),
                 ),
               ],
             ),
@@ -1261,7 +1276,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
                 ),
                 _ReadinessItem(
                   title: 'Alarm volume',
-                  detail: 'Keep alarm volume above zero',
+                  detail: 'Keep alarm volume above the lowest level',
                   ready: _readiness?.alarmVolumeEnabled ?? false,
                   action: _refresh,
                   actionLabel: 'Check again',
@@ -1721,6 +1736,19 @@ String _repeatRule(Reminder reminder) {
   return reminder.detail.split(' · ').first;
 }
 
+String _scheduleBlockedMessage(Reminder reminder, AlarmReadiness readiness) {
+  if (!readiness.notificationsEnabled) {
+    return 'Reminder saved, but notifications are off. Allow notifications before it can fire.';
+  }
+  if (!readiness.exactAlarmEnabled) {
+    return 'Reminder saved, but exact alarms are off. Allow exact alarms before it can fire on time.';
+  }
+  if (reminder.isAlarm && !readiness.alarmVolumeEnabled) {
+    return 'Reminder saved, but alarm volume is muted or too low. Raise alarm volume before relying on ${_deliveryLabel(reminder.deliveryMode)}.';
+  }
+  return 'Reminder saved, but this device is not ready to schedule it yet.';
+}
+
 String _friendlyDate(DateTime date) {
   const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -1733,7 +1761,7 @@ List<String> _readinessWarnings(AlarmReadiness? readiness) {
   if (!readiness.notificationsEnabled) warnings.add('Notifications are off, so reminders may not appear.');
   if (!readiness.exactAlarmEnabled) warnings.add('Exact alarms are off, so important alarms may not fire on time.');
   if (!readiness.fullScreenIntentEnabled) warnings.add('Full-screen alarms are off, so lock-screen alarm screens may not appear.');
-  if (!readiness.alarmVolumeEnabled) warnings.add('Alarm volume is muted, so alarm sound may not be audible.');
+  if (!readiness.alarmVolumeEnabled) warnings.add('Alarm volume is muted or too low, so speech and alarm sound may not be audible.');
   if (!readiness.dndPolicyAccess) warnings.add('Reliable alarms cannot interrupt DND. Android alarms may still fire, but allow this for the safest DND behavior.');
   return warnings;
 }

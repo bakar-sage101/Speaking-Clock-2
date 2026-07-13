@@ -98,6 +98,10 @@ class MainActivity : FlutterActivity() {
             result.error("exact_alarm_unavailable", "Exact alarm access has not been granted.", null)
             return
         }
+        if (alarmStyle && !AlarmReadiness.isAlarmVolumeAudible(this)) {
+            result.error("alarm_volume_muted", "Alarm volume is muted or too low. Raise alarm volume before scheduling a reliable alarm.", null)
+            return
+        }
         AlarmNotificationHelper.ensureChannels(this)
         AlarmScheduler.schedule(this, id, triggerAtMillis, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule)
         result.success(null)
@@ -120,6 +124,22 @@ object AlarmReadiness {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager.canScheduleExactAlarms()
     }
 
+    fun isAlarmVolumeAudible(context: android.content.Context): Boolean {
+        val audioManager = context.getSystemService(AudioManager::class.java)
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
+        val minimumVolume = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            audioManager.getStreamMinVolume(AudioManager.STREAM_ALARM)
+        } else {
+            0
+        }
+        val isMuted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioManager.isStreamMute(AudioManager.STREAM_ALARM)
+        } else {
+            false
+        }
+        return !isMuted && currentVolume > minimumVolume
+    }
+
     fun status(context: android.content.Context): Map<String, Any> {
         AlarmNotificationHelper.ensureChannels(context)
         val notificationsEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -128,7 +148,6 @@ object AlarmReadiness {
             true
         }
         val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
-        val audioManager = context.getSystemService(AudioManager::class.java)
         val fullScreenIntentEnabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             notificationManager.canUseFullScreenIntent()
         } else {
@@ -144,7 +163,7 @@ object AlarmReadiness {
             "notificationsEnabled" to notificationsEnabled,
             "exactAlarmEnabled" to canScheduleExactAlarms(context),
             "dndPolicyAccess" to reliableAlarmCanBypassDnd,
-            "alarmVolumeEnabled" to (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) > 0),
+            "alarmVolumeEnabled" to isAlarmVolumeAudible(context),
             "fullScreenIntentEnabled" to fullScreenIntentEnabled,
         )
     }

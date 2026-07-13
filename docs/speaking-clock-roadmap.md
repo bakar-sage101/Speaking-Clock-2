@@ -2,7 +2,7 @@
 
 ## Current standing
 
-Android Phase 1 core alarm engine is working on the physical Pixel 8, and the first Android reliability pass is now verified under real-world conditions.
+Android Phase 1 core alarm engine is working on the physical Pixel 8, and the main Android Phase 2 reliability pass is now verified under real-world conditions.
 
 What is working now:
 
@@ -33,6 +33,8 @@ What is working now:
 - Actual Pixel 8 reboot recovery test passed: an alarm scheduled before restart restored and fired after restart.
 - DND readiness now checks the actual `Reliable alarms` notification channel DND interruption state, not only broad Android Modes access.
 - The DND setup action now opens the `Reliable alarms` notification channel settings instead of the broad Modes access page.
+- Alarm volume readiness now treats Pixel/Android's bottom alarm volume level as unsafe, even when Android technically reports a non-zero stream volume.
+- Today screen permission warnings now include a direct Review setup action that opens Reliable Alarm setup.
 
 The important Android issue fixed:
 
@@ -43,6 +45,7 @@ The important Android issue fixed:
 - Custom-minute repeat briefly behaved as “first fire after X minutes from now.” This was corrected: the first fire stays at the user-selected AM/PM time, then repeats every custom X minutes.
 - DND readiness initially checked the wrong Android concept. Android has both broad Modes access and per-channel DND interruption/bypass state. The app now uses the `Reliable alarms` notification channel state for DND readiness.
 - The app initially sent users to the broad Modes access page for DND repair. It now sends them to the `Reliable alarms` notification channel settings page, which is the relevant place to allow DND interruption.
+- Pixel reports the lowest alarm slider position as a non-zero alarm stream volume. The app originally interpreted this as safe. It now requires alarm volume to be above Android's minimum level, because the minimum/bottom position is not reliable enough for spoken alarms.
 
 Latest verified Pixel 8 behavior:
 
@@ -54,6 +57,11 @@ Latest verified Pixel 8 behavior:
 - Reboot recovery passed on Pixel 8.
 - DND ON with `Reliable alarms` removed from interrupting apps still allowed Android alarm-clock style alarms to fire, which is acceptable Android behavior, but the app now detects and warns that the Reliable alarms channel is not DND-ready.
 - Reliable Alarm status correctly shows Do Not Disturb as not ready when the `Reliable alarms` channel cannot interrupt DND.
+- Low alarm-volume handling passed on Pixel 8: when a repeating Alarm Reminder was running, lowering alarm volume to the bottom level triggered an in-app warning; raising it cleared the warning, and the next repeat still fired correctly.
+- Nearby alarm overlap passed on Pixel 8: a Speaking Alarm fired, was snoozed for 5 minutes, an Alarm Reminder fired one minute later and was acknowledged, then the snoozed Speaking Alarm returned correctly.
+- Three nearby one-time alarms passed on Pixel 8: Speaking Alarm, Alarm Reminder, and Speaking Alarm fired in sequence and each acknowledged cleanly.
+- Long-running repeat soak test was user-tested and passed.
+- Notification-permission revoked flow was user-tested and passed.
 
 ## Phase 1 — Android Reliable Alarm Foundation
 
@@ -84,6 +92,8 @@ Included:
 - Lock-screen alarm UI styling pass
 - DND readiness detection based on the `Reliable alarms` notification channel
 - DND repair routing to the `Reliable alarms` notification channel settings page
+- Alarm volume readiness that treats the bottom/minimum alarm level as unsafe
+- Direct repair path from Today screen warnings into Reliable Alarm setup
 
 Remaining Phase 1 polish:
 
@@ -134,8 +144,8 @@ Proposed onboarding screens:
    - Explain clearly that this is optional but recommended for reliable alarms.
 
 7. Alarm volume check
-   - Check whether alarm volume is above zero.
-   - Guide the user if volume is muted.
+   - Check whether alarm volume is above Android's lowest/minimum level.
+   - Guide the user if volume is muted or too low to trust.
 
 8. Test alarm
    - Let the user trigger a short test alarm to confirm setup.
@@ -155,11 +165,12 @@ Implementation status:
 - Permission screens/actions are connected to Android settings where Android requires settings pages.
 - The latest test intentionally allowed the user to grant permissions through the app flow instead of granting them through USB/ADB.
 - DND repair now routes to the specific Reliable alarms notification channel settings page, because broad Modes access can be ON while the Reliable alarms channel still cannot interrupt DND.
+- Alarm volume copy and readiness now use "above the lowest level" instead of "above zero" because Pixel can report the bottom alarm level as non-zero.
 - Further polish is still needed so onboarding feels more premium and less like a setup checklist.
 
 ## Phase 2 — Android Stability and Real-World Reliability
 
-Current active phase.
+Status: main Android reliability pass complete on Pixel 8; remaining items are deeper edge-case hardening and debug tooling.
 
 Main goal:
 
@@ -173,6 +184,7 @@ Build next:
 - Better handling if exact alarm permission is revoked.
 - Better handling if notification permission is revoked.
 - Better handling if full-screen alarm permission is revoked.
+- Better handling if alarm volume is lowered to Android's minimum/bottom level while repeats are active.
 - Make alarm state persistent:
   - scheduled
   - fired
@@ -180,18 +192,20 @@ Build next:
   - acknowledged
 - Add a logs/debug screen for testing.
 
-Test:
+Verified test coverage:
 
 - Locked phone — verified on Pixel 8.
 - Screen off — partially covered by locked-screen testing.
 - Do Not Disturb on/off — partially verified on Pixel 8.
-- Silent mode
+- Silent mode and alarm-volume variations — verified on Pixel 8.
 - App closed/removed from recent apps — verified on Pixel 8.
 - Another app in foreground — verified with Instagram on Pixel 8.
 - After reboot — verified on Pixel 8.
-- After snooze
+- After snooze — verified on Pixel 8.
 - Custom-minute recurrence — verified with 2-minute repeat on Pixel 8.
-- Multiple alarms
+- Multiple nearby alarms — overlap/snooze case and three-alarm sequence verified on Pixel 8.
+- Long-running repeat soak — user-tested and passed.
+- Notification permission revoked after setup — user-tested and passed.
 
 Already implemented or partially implemented:
 
@@ -203,22 +217,98 @@ Already implemented or partially implemented:
 - Reboot recovery verified on physical Pixel 8.
 - DND readiness based on Reliable alarms channel bypass/interruption state.
 - DND setup opens Reliable alarms channel settings instead of broad Modes access.
+- Alarm volume readiness blocks scheduling when alarm volume is muted or at the bottom/minimum level.
+- Today screen permission warnings can now open Reliable Alarm setup directly.
 
-Still needs explicit verification:
+Remaining reliability backlog:
 
 - DND repair flow after opening the Reliable alarms channel settings page.
-- Silent mode behavior with alarm volume and media volume variations.
-- Permission revoked after setup.
-- Multiple simultaneous/nearby alarms.
-- Long-running repeat behavior over several hours.
+- Exact alarm permission revoked after setup.
+- Full-screen alarm permission revoked after setup.
+- Multiple simultaneous alarms at the exact same minute.
+- Longer multi-hour repeat soak.
+- Add an in-app debug/status screen for scheduled alarms and permission state.
+- Code structure cleanup before calendar integrations and iOS work.
 
 ## Phase 3 — UX Polish
+
+Current active phase.
 
 Main goal:
 
 - Make the app feel calm, premium, and easy to use rather than like a technical prototype.
 
-Build:
+Phase 3 product goals:
+
+- Make reminder creation feel effortless.
+- Make the three reminder types obvious and emotionally distinct.
+- Make Gentle Reminder useful instead of feeling like a weak notification.
+- Make the app feel visually consistent across Today, Routines, Settings, onboarding, editor, and alarm screens.
+- Reduce technical wording without hiding important reliability warnings.
+
+Build sequence:
+
+1. Reminder creation flow polish
+   - Improve Add Reminder screen layout.
+   - Make title, time, repeat, mode, tone, and spoken message feel guided.
+   - Make AM/PM and Today/Tomorrow preview clearer.
+   - Make custom-minute repeat easier to understand.
+   - Add better validation messages before saving.
+
+2. Reminder mode redesign
+   - Gentle Reminder: light but useful.
+   - Alarm Reminder: full-screen ringing until acknowledged.
+   - Speaking Alarm: spoken text first, then ringing until acknowledged.
+   - Add clearer descriptions and visual treatment for each mode.
+
+3. Gentle Reminder improvement
+   - Improve notification behavior.
+   - Add useful actions such as Done and Remind again.
+   - Make it feel different from Alarm Reminder without being too weak.
+   - Decide whether Gentle Reminder should support optional light snooze.
+
+4. Tone picker polish
+   - Improve tone selection UI.
+   - Show tone names more clearly.
+   - Add preview/test behavior later if needed.
+   - Keep built-in tones for now.
+
+5. Spoken message field polish
+   - Make the custom spoken text field more prominent for Speaking Alarm.
+   - Add examples such as “Drink water now” or “Meeting starts in 10 minutes.”
+   - Make default spoken text clearer when the field is empty.
+
+6. Today screen polish
+   - Improve next-up card.
+   - Improve “Later today” grouping.
+   - Improve empty states.
+   - Show clearer status for disabled reminders.
+   - Improve next alarm time display after snooze/edit.
+
+7. Routines polish
+   - Make quick-start routines actually useful.
+   - Add templates like Drink water, Stretch, Eye break, Medication, Meeting prep.
+   - Let templates pre-fill title, type, repeat, tone, and delivery mode.
+
+8. Settings and onboarding polish
+   - Make onboarding feel premium and less checklist-like.
+   - Improve Reliable Alarm wording.
+   - Add a simple help/debug section later for Android reliability state.
+
+9. Native full-screen alarm polish
+   - Keep current working behavior stable.
+   - Refine spacing, typography, icon, and button states only where safe.
+   - Avoid risky changes to playback/scheduling during UX polish.
+
+Acceptance criteria:
+
+- A first-time user can create a useful reminder without needing explanation.
+- The difference between Gentle Reminder, Alarm Reminder, and Speaking Alarm is obvious.
+- Gentle Reminder feels intentionally lightweight, not broken or too quiet.
+- Existing Android reliability tests still pass after UI changes.
+- The visual design remains minimal, calm, cream/sage, and easy on the eyes.
+
+Original Phase 3 ideas:
 
 - Better reminder creation flow.
 - Better tone picker.
@@ -269,11 +359,11 @@ Build:
 
 ## Recommended immediate next step
 
-Continue Phase 2 by verifying and hardening Android reliability:
+Move into Phase 3 UX polish while keeping Phase 2 reliability as a regression suite:
 
-1. Verify the DND repair flow now opens the Reliable alarms channel settings and lets the user restore DND interruption.
-2. Test silent mode and alarm-volume behavior.
-3. Add an in-app debug/status screen for scheduled alarms and permission state.
-4. Improve permission warnings when notification, exact alarm, full-screen, DND, or alarm volume becomes unsafe.
-5. Test multiple nearby alarms and long-running repeat behavior.
-6. Clean up code structure before adding calendar integrations or iOS work.
+1. Polish the Add Reminder flow.
+2. Improve reminder-mode selection and explanations.
+3. Upgrade Gentle Reminder behavior.
+4. Improve tone picker and spoken message field.
+5. Re-run Android reliability tests after each meaningful UX change.
+6. Keep debug/status tooling as a Phase 2 backlog item unless reliability issues reappear.

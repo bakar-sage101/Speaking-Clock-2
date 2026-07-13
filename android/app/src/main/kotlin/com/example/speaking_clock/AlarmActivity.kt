@@ -75,6 +75,7 @@ class AlarmActivity : Activity() {
         val muted = Color.rgb(70, 78, 72)
         val amber = Color.rgb(200, 137, 69)
         val surface = Color.WHITE
+        val alarmVolumeMuted = !AlarmReadiness.isAlarmVolumeAudible(this)
 
         window.statusBarColor = canvas
         window.navigationBarColor = canvas
@@ -173,6 +174,19 @@ class AlarmActivity : Activity() {
                     gravity = Gravity.CENTER
                     setPadding(0, dp(16), 0, 0)
                     setLineSpacing(dp(3).toFloat(), 1.0f)
+                },
+            )
+        }
+        if (alarmVolumeMuted) {
+            titleBlock.addView(
+                TextView(this).apply {
+                    text = "Alarm volume is muted or too low. Raise alarm volume to hear speech and tone."
+                    textSize = 15f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(amber)
+                    gravity = Gravity.CENTER
+                    setPadding(dp(14), dp(16), dp(14), 0)
+                    setLineSpacing(dp(2).toFloat(), 1.0f)
                 },
             )
         }
