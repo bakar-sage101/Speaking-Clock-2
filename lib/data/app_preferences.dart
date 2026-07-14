@@ -10,7 +10,8 @@ class AppPreferences {
   static const _fileName = 'speaking_clock_preferences.json';
   static const _onboardingCompleteKey = 'onboardingComplete';
 
-  static bool get _isTestEnvironment => Platform.environment.containsKey('FLUTTER_TEST');
+  static bool get _isTestEnvironment =>
+      Platform.environment.containsKey('FLUTTER_TEST');
 
   static Future<bool> isOnboardingComplete() async {
     if (_isTestEnvironment) return true;

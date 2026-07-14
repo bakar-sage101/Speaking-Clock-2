@@ -36,13 +36,12 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   Future<List<ReminderRecord>> allReminders() {
-    return (select(reminderRecords)
-          ..orderBy([
-            (table) => OrderingTerm(
-                  expression: table.triggerAtMillis,
-                  mode: OrderingMode.asc,
-                ),
-          ]))
+    return (select(reminderRecords)..orderBy([
+          (table) => OrderingTerm(
+            expression: table.triggerAtMillis,
+            mode: OrderingMode.asc,
+          ),
+        ]))
         .get();
   }
 
@@ -51,11 +50,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> deleteReminderById(String id) {
-    return (delete(reminderRecords)..where((table) => table.id.equals(id))).go();
+    return (delete(
+      reminderRecords,
+    )..where((table) => table.id.equals(id))).go();
   }
 
   Future<void> setReminderEnabled(String id, bool enabled) {
-    return (update(reminderRecords)..where((table) => table.id.equals(id))).write(
+    return (update(
+      reminderRecords,
+    )..where((table) => table.id.equals(id))).write(
       ReminderRecordsCompanion(
         enabled: Value(enabled),
         updatedAtMillis: Value(DateTime.now().millisecondsSinceEpoch),

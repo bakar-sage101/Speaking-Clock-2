@@ -24,20 +24,23 @@ class AlarmReadiness {
       alarmVolumeEnabled &&
       fullScreenIntentEnabled;
 
-  bool get canScheduleGentleReminders => notificationsEnabled && exactAlarmEnabled;
+  bool get canScheduleGentleReminders =>
+      notificationsEnabled && exactAlarmEnabled;
 
   bool get canScheduleReliableAlarms =>
       notificationsEnabled && exactAlarmEnabled && alarmVolumeEnabled;
 
   bool get canScheduleSpokenAlarms => canScheduleReliableAlarms;
 
-  factory AlarmReadiness.fromMap(Map<Object?, Object?> values) => AlarmReadiness(
+  factory AlarmReadiness.fromMap(Map<Object?, Object?> values) =>
+      AlarmReadiness(
         platform: values['platform'] as String? ?? 'unknown',
         notificationsEnabled: values['notificationsEnabled'] as bool? ?? false,
         exactAlarmEnabled: values['exactAlarmEnabled'] as bool? ?? false,
         dndPolicyAccess: values['dndPolicyAccess'] as bool? ?? false,
         alarmVolumeEnabled: values['alarmVolumeEnabled'] as bool? ?? false,
-        fullScreenIntentEnabled: values['fullScreenIntentEnabled'] as bool? ?? false,
+        fullScreenIntentEnabled:
+            values['fullScreenIntentEnabled'] as bool? ?? false,
       );
 }
 
@@ -47,7 +50,9 @@ class ReliabilityPlatform {
   static const _channel = MethodChannel('speaking_clock/reliability');
 
   static Future<AlarmReadiness> getStatus() async {
-    final values = await _channel.invokeMapMethod<Object?, Object?>('getStatus');
+    final values = await _channel.invokeMapMethod<Object?, Object?>(
+      'getStatus',
+    );
     return AlarmReadiness.fromMap(values ?? const {});
   }
 
@@ -73,18 +78,17 @@ class ReliabilityPlatform {
     required String toneId,
     required int snoozeMinutes,
     required String repeatRule,
-  }) =>
-      _channel.invokeMethod<void>('scheduleAlarm', {
-        'id': id,
-        'triggerAtMillis': triggerAt.millisecondsSinceEpoch,
-        'title': title,
-        'alarmStyle': alarmStyle,
-        'spoken': spoken,
-        'spokenMessage': spokenMessage,
-        'toneId': toneId,
-        'snoozeMinutes': snoozeMinutes,
-        'repeatRule': repeatRule,
-      });
+  }) => _channel.invokeMethod<void>('scheduleAlarm', {
+    'id': id,
+    'triggerAtMillis': triggerAt.millisecondsSinceEpoch,
+    'title': title,
+    'alarmStyle': alarmStyle,
+    'spoken': spoken,
+    'spokenMessage': spokenMessage,
+    'toneId': toneId,
+    'snoozeMinutes': snoozeMinutes,
+    'repeatRule': repeatRule,
+  });
 
   static Future<void> cancelAlarm({required int id}) =>
       _channel.invokeMethod<void>('cancelAlarm', {'id': id});

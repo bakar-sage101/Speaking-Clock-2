@@ -166,6 +166,134 @@ Completed:
 - Cleaned up non-clickable placeholder rows so they no longer show navigation chevrons.
 - Polished onboarding copy to feel calmer and less technical.
 
+### Phase 3F — Code structure refactor
+
+Completed:
+
+- Split the previous 3000+ line `lib/main.dart` into feature-focused files.
+- Reduced `lib/main.dart` to the app entrypoint plus library part declarations.
+- Added a clearer `lib/` structure:
+  - `app/`
+  - `models/`
+  - `screens/onboarding/`
+  - `screens/today/`
+  - `screens/routines/`
+  - `screens/settings/`
+  - `screens/reminder_detail/`
+  - `screens/reminder_editor/`
+  - `widgets/` planned for later standalone shared widgets
+  - `utils/`
+- Kept behavior and UI unchanged during the split.
+- Used Dart part files for the first safe extraction pass so private helpers could keep working while the project was reorganized.
+- Verified the refactor with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Next cleanup step:
+
+- Gradually convert some part files into normal imported Dart libraries where it improves maintainability.
+- Move shared widgets such as badges and reminder icons into `widgets/`.
+- Move pure formatting/time helpers into independent utility imports.
+
+### Phase 3G — Visual identity pass
+
+Planned and now in progress:
+
+- Adopt the Linen / Dark Wine / Ash Grey direction as the main product palette.
+- Use Scarlet Glacier only as inspiration for soft gradients, not as the dominant palette.
+- Add shared design tokens for:
+  - Linen background
+  - Dark Wine primary accent
+  - Ash Grey calm/support color
+  - Soft Snow card surfaces
+  - Blush/Wine gradient accents
+- Redesign onboarding with:
+  - gradient background
+  - slim top progress line
+  - no global Skip button
+  - calmer permission copy and stronger setup flow
+- Add gradient treatment to important hero cards, especially Next Up.
+- Move primary CTAs toward Dark Wine while keeping secondary chips calm with Ash Grey/Sage.
+- Keep behavior unchanged during this pass; this is a visual-system update only.
+
+Completed in first implementation pass:
+
+- Added the new visual identity tokens:
+  - Linen
+  - Dark Wine
+  - Muted Wine
+  - Ash Grey
+  - Bright Snow
+  - Blush
+  - Periwinkle Mist for later optional accents
+- Added shared gradients:
+  - onboarding gradient
+  - hero gradient
+  - wine hero gradient
+  - soft card gradient
+- Updated the Material theme to use Dark Wine as the primary color.
+- Updated primary buttons and floating action button to use Dark Wine / Linen.
+- Redesigned onboarding with:
+  - full-screen gradient background
+  - slim rounded top progress line
+  - progress count pill
+  - soft glass-like content card
+  - no global Skip button
+  - Back-only navigation for previous steps
+- Applied first Today screen visual pass:
+  - gradient header card
+  - gradient Next Up hero card
+  - important Alarm/Speaking reminders use wine-gradient hero treatment
+  - Gentle reminders use the softer linen/ash gradient treatment
+  - softer warning card, empty card, reminder rows, and reliability note
+- Verified with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in second implementation pass:
+
+- Applied the Linen / Dark Wine / Ash Grey visual identity to the Add Reminder editor.
+- Updated Add Reminder cards with soft gradients, wine-accent icons, calmer selected states, and clearer mode-card hierarchy.
+- Updated delivery-mode accent colors:
+  - Gentle stays calm and muted.
+  - Alarm Reminder uses Dark Wine.
+  - Speaking Alarm uses Muted Wine.
+- Applied the visual identity to Routines:
+  - gradient header card
+  - softer routine template cards
+  - Dark Wine navigation/accent treatment
+- Applied the visual identity to Settings:
+  - gradient header card
+  - upgraded Reliable Alarm readiness card
+  - softer setting tiles
+  - Dark Wine icons and repair actions
+- Applied the visual identity to Reliable Alarm setup:
+  - gradient status card
+  - softer readiness rows
+  - clearer Dark Wine / Muted Wine status treatment
+- Applied the visual identity to Reminder Details:
+  - softened detail cards
+  - refreshed enabled toggle card
+  - calmer visual framing around the reminder icon
+- Verified with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Still to do in Phase 3G:
+
+- Apply the new visual identity to the native full-screen alarm screen.
+- Review contrast and readability on the Pixel after real-device visual inspection.
+- Decide whether any screens need reduced gradients after real-device visual inspection.
+
 ### Verification after recent work
 
 Completed after each meaningful change:
