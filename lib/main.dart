@@ -23,7 +23,14 @@ enum ReminderType { water, breakTime, meeting, medication, custom }
 
 enum DeliveryMode { gentle, alarm, speaking }
 
-enum ToneOption { softChime, classicAlarm, digitalBeep, morningBell, calmWater, vibrationOnly }
+enum ToneOption {
+  softChime,
+  classicAlarm,
+  digitalBeep,
+  morningBell,
+  calmWater,
+  vibrationOnly,
+}
 
 class Reminder {
   const Reminder({
@@ -71,22 +78,21 @@ class Reminder {
     int? snoozeMinutes,
     int? triggerAtMillis,
     int? updatedAtMillis,
-  }) =>
-      Reminder(
-        id: id,
-        title: title ?? this.title,
-        time: time ?? this.time,
-        detail: detail ?? this.detail,
-        type: type ?? this.type,
-        deliveryMode: deliveryMode ?? this.deliveryMode,
-        spokenMessage: spokenMessage ?? this.spokenMessage,
-        tone: tone ?? this.tone,
-        enabled: enabled ?? this.enabled,
-        snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
-        triggerAtMillis: triggerAtMillis ?? this.triggerAtMillis,
-        createdAtMillis: createdAtMillis,
-        updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
-      );
+  }) => Reminder(
+    id: id,
+    title: title ?? this.title,
+    time: time ?? this.time,
+    detail: detail ?? this.detail,
+    type: type ?? this.type,
+    deliveryMode: deliveryMode ?? this.deliveryMode,
+    spokenMessage: spokenMessage ?? this.spokenMessage,
+    tone: tone ?? this.tone,
+    enabled: enabled ?? this.enabled,
+    snoozeMinutes: snoozeMinutes ?? this.snoozeMinutes,
+    triggerAtMillis: triggerAtMillis ?? this.triggerAtMillis,
+    createdAtMillis: createdAtMillis,
+    updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+  );
 
   ReminderRecordsCompanion toCompanion() {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -108,20 +114,40 @@ class Reminder {
   }
 
   factory Reminder.fromRecord(ReminderRecord record) => Reminder(
-        id: record.id,
-        title: record.title,
-        time: record.timeLabel,
-        detail: record.detail,
-        type: _enumValue(ReminderType.values, record.type, ReminderType.custom),
-        deliveryMode: _deliveryModeFromName(record.deliveryMode),
-        spokenMessage: record.spokenMessage,
-        tone: _toneFromName(record.toneId),
-        enabled: record.enabled,
-        snoozeMinutes: record.snoozeMinutes,
-        triggerAtMillis: record.triggerAtMillis,
-        createdAtMillis: record.createdAtMillis,
-        updatedAtMillis: record.updatedAtMillis,
-      );
+    id: record.id,
+    title: record.title,
+    time: record.timeLabel,
+    detail: record.detail,
+    type: _enumValue(ReminderType.values, record.type, ReminderType.custom),
+    deliveryMode: _deliveryModeFromName(record.deliveryMode),
+    spokenMessage: record.spokenMessage,
+    tone: _toneFromName(record.toneId),
+    enabled: record.enabled,
+    snoozeMinutes: record.snoozeMinutes,
+    triggerAtMillis: record.triggerAtMillis,
+    createdAtMillis: record.createdAtMillis,
+    updatedAtMillis: record.updatedAtMillis,
+  );
+}
+
+class ReminderDraft {
+  const ReminderDraft({
+    required this.title,
+    required this.type,
+    required this.deliveryMode,
+    required this.repeatRule,
+    required this.tone,
+    this.spokenMessage = '',
+    this.snoozeMinutes = 10,
+  });
+
+  final String title;
+  final ReminderType type;
+  final DeliveryMode deliveryMode;
+  final String repeatRule;
+  final ToneOption tone;
+  final String spokenMessage;
+  final int snoozeMinutes;
 }
 
 class SpeakingClockApp extends StatefulWidget {
@@ -131,7 +157,8 @@ class SpeakingClockApp extends StatefulWidget {
   State<SpeakingClockApp> createState() => _SpeakingClockAppState();
 }
 
-class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBindingObserver {
+class _SpeakingClockAppState extends State<SpeakingClockApp>
+    with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   late final AppDatabase _database;
@@ -190,10 +217,17 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
     final saved = await _database.allReminders();
     if (!mounted) return;
     if (saved.isEmpty) {
-      await Future.wait(_reminders.map((reminder) => _database.saveReminder(reminder.toCompanion())));
+      await Future.wait(
+        _reminders.map(
+          (reminder) => _database.saveReminder(reminder.toCompanion()),
+        ),
+      );
       return;
     }
-    setState(() => _reminders = _sortReminders(saved.map(Reminder.fromRecord).toList()));
+    setState(
+      () =>
+          _reminders = _sortReminders(saved.map(Reminder.fromRecord).toList()),
+    );
   }
 
   Future<void> _refreshReadiness() async {
@@ -219,12 +253,15 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
     super.dispose();
   }
 
-  Future<void> _showAddReminder({ReminderType initialType = ReminderType.water}) async {
+  Future<void> _showAddReminder({
+    ReminderType initialType = ReminderType.water,
+    ReminderDraft? draft,
+  }) async {
     final reminder = await showModalBottomSheet<Reminder>(
       context: _navigatorKey.currentState!.context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReminderEditor(initialType: initialType),
+      builder: (_) => ReminderEditor(initialType: initialType, draft: draft),
     );
     if (reminder != null) {
       setState(() => _reminders = _sortReminders([..._reminders, reminder]));
@@ -239,7 +276,8 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
       context: _navigatorKey.currentState!.context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReminderEditor(initialType: original.type, reminder: original),
+      builder: (_) =>
+          ReminderEditor(initialType: original.type, reminder: original),
     );
     if (updated == null) return;
     await _cancelDeviceReminder(original);
@@ -255,15 +293,24 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
 
   Future<void> _deleteReminder(Reminder reminder) async {
     await _cancelDeviceReminder(reminder);
-    setState(() => _reminders = _sortReminders(_reminders.where((item) => item.id != reminder.id).toList()));
+    setState(
+      () => _reminders = _sortReminders(
+        _reminders.where((item) => item.id != reminder.id).toList(),
+      ),
+    );
     await _database.deleteReminderById(reminder.id);
     _navigatorKey.currentState?.pop();
-    _messengerKey.currentState?.showSnackBar(SnackBar(content: Text('${reminder.title} deleted.')));
+    _messengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('${reminder.title} deleted.')),
+    );
   }
 
   Future<void> _toggleReminder(Reminder reminder, bool enabled) async {
     if (!enabled) await _cancelDeviceReminder(reminder);
-    final updated = reminder.copyWith(enabled: enabled, updatedAtMillis: DateTime.now().millisecondsSinceEpoch);
+    final updated = reminder.copyWith(
+      enabled: enabled,
+      updatedAtMillis: DateTime.now().millisecondsSinceEpoch,
+    );
     setState(() {
       _reminders = _sortReminders([
         for (final item in _reminders)
@@ -273,7 +320,9 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
     await _database.setReminderEnabled(reminder.id, enabled);
     if (enabled) await _scheduleDeviceReminder(updated);
     _messengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text('${reminder.title} ${enabled ? 'resumed' : 'paused'}.')),
+      SnackBar(
+        content: Text('${reminder.title} ${enabled ? 'resumed' : 'paused'}.'),
+      ),
     );
   }
 
@@ -296,7 +345,8 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
       final readiness = await ReliabilityPlatform.getStatus();
       final canSchedule = switch (reminder.deliveryMode) {
         DeliveryMode.gentle => readiness.canScheduleGentleReminders,
-        DeliveryMode.alarm || DeliveryMode.speaking => readiness.canScheduleReliableAlarms,
+        DeliveryMode.alarm ||
+        DeliveryMode.speaking => readiness.canScheduleReliableAlarms,
       };
       if (!canSchedule) {
         await _cancelDeviceReminder(reminder);
@@ -311,7 +361,9 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
       }
       await ReliabilityPlatform.scheduleAlarm(
         id: reminder.id.hashCode & 0x7fffffff,
-        triggerAt: DateTime.fromMillisecondsSinceEpoch(reminder.triggerAtMillis!),
+        triggerAt: DateTime.fromMillisecondsSinceEpoch(
+          reminder.triggerAtMillis!,
+        ),
         title: reminder.title,
         alarmStyle: reminder.isAlarm,
         spoken: reminder.isSpeakingAlarm,
@@ -325,19 +377,31 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
             ? ' Allow Reliable alarms to interrupt DND for the safest behavior.'
             : '';
         _messengerKey.currentState?.showSnackBar(
-          SnackBar(content: Text('${_deliveryLabel(reminder.deliveryMode)} scheduled.$dndNote')),
+          SnackBar(
+            content: Text(
+              '${_deliveryLabel(reminder.deliveryMode)} scheduled.$dndNote',
+            ),
+          ),
         );
       }
     } on PlatformException catch (error) {
       if (mounted) {
         _messengerKey.currentState?.showSnackBar(
-          SnackBar(content: Text(error.message ?? 'Reliable Alarm could not be scheduled.')),
+          SnackBar(
+            content: Text(
+              error.message ?? 'Reliable Alarm could not be scheduled.',
+            ),
+          ),
         );
       }
     } on MissingPluginException {
       if (mounted) {
         _messengerKey.currentState?.showSnackBar(
-          const SnackBar(content: Text('Reliable Alarm is not available on this platform yet.')),
+          const SnackBar(
+            content: Text(
+              'Reliable Alarm is not available on this platform yet.',
+            ),
+          ),
         );
       }
     }
@@ -345,7 +409,9 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
 
   Future<void> _cancelDeviceReminder(Reminder reminder) async {
     try {
-      await ReliabilityPlatform.cancelAlarm(id: reminder.id.hashCode & 0x7fffffff);
+      await ReliabilityPlatform.cancelAlarm(
+        id: reminder.id.hashCode & 0x7fffffff,
+      );
     } on PlatformException {
       // The local database is still the source of truth if Android cancellation fails.
     } on MissingPluginException {
@@ -367,79 +433,89 @@ class _SpeakingClockAppState extends State<SpeakingClockApp> with WidgetsBinding
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: scheme,
-        scaffoldBackgroundColor:
-            _darkMode ? const Color(0xff111411) : AppColors.canvas,
+        scaffoldBackgroundColor: _darkMode
+            ? const Color(0xff111411)
+            : AppColors.canvas,
         fontFamily: 'Inter',
       ),
       home: _onboardingComplete == null
           ? const Scaffold(body: Center(child: CircularProgressIndicator()))
           : !_onboardingComplete!
-              ? OnboardingScreen(onComplete: _finishOnboarding)
-              : Scaffold(
-        body: SafeArea(
-          child: IndexedStack(
-            index: _tab,
-            children: [
-              TodayScreen(
-                reminders: _reminders,
-                onAdd: _showAddReminder,
-                onOpenReminder: _openReminderDetails,
-                onOpenReliability: () => _navigatorKey.currentState!.push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ReliabilityScreen(),
+          ? OnboardingScreen(onComplete: _finishOnboarding)
+          : Scaffold(
+              body: SafeArea(
+                child: IndexedStack(
+                  index: _tab,
+                  children: [
+                    TodayScreen(
+                      reminders: _reminders,
+                      onAdd: _showAddReminder,
+                      onOpenReminder: _openReminderDetails,
+                      onOpenReliability: () => _navigatorKey.currentState!
+                          .push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ReliabilityScreen(),
+                            ),
+                          )
+                          .then((_) => _refreshReadiness()),
+                      readiness: _readiness,
+                    ),
+                    RoutinesScreen(
+                      reminders: _reminders,
+                      onAdd: _showAddReminder,
+                      onUseTemplate: (draft) => _showAddReminder(
+                        initialType: draft.type,
+                        draft: draft,
+                      ),
+                      onOpenReminder: _openReminderDetails,
+                    ),
+                    SettingsScreen(
+                      darkMode: _darkMode,
+                      readiness: _readiness,
+                      onDarkModeChanged: (value) =>
+                          setState(() => _darkMode = value),
+                      onOpenReliability: () => _navigatorKey.currentState!
+                          .push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ReliabilityScreen(),
+                            ),
+                          )
+                          .then((_) => _refreshReadiness()),
+                    ),
+                  ],
+                ),
+              ),
+              floatingActionButton: _tab == 2
+                  ? null
+                  : FloatingActionButton.extended(
+                      onPressed: _showAddReminder,
+                      backgroundColor: AppColors.sage,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add reminder'),
+                    ),
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: _tab,
+                onDestinationSelected: (value) => setState(() => _tab = value),
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.today_outlined),
+                    selectedIcon: Icon(Icons.today_rounded),
+                    label: 'Today',
                   ),
-                ).then((_) => _refreshReadiness()),
-                readiness: _readiness,
-              ),
-              RoutinesScreen(
-                reminders: _reminders,
-                onAdd: _showAddReminder,
-                onAddForType: (type) => _showAddReminder(initialType: type),
-                onOpenReminder: _openReminderDetails,
-              ),
-              SettingsScreen(
-                darkMode: _darkMode,
-                onDarkModeChanged: (value) => setState(() => _darkMode = value),
-                onOpenReliability: () => _navigatorKey.currentState!.push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ReliabilityScreen(),
+                  NavigationDestination(
+                    icon: Icon(Icons.repeat_rounded),
+                    selectedIcon: Icon(Icons.repeat_one_rounded),
+                    label: 'Routines',
                   ),
-                ).then((_) => _refreshReadiness()),
+                  NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings_rounded),
+                    label: 'Settings',
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        floatingActionButton: _tab == 2
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: _showAddReminder,
-                backgroundColor: AppColors.sage,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Add reminder'),
-              ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tab,
-          onDestinationSelected: (value) => setState(() => _tab = value),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.today_outlined),
-              selectedIcon: Icon(Icons.today_rounded),
-              label: 'Today',
             ),
-            NavigationDestination(
-              icon: Icon(Icons.repeat_rounded),
-              selectedIcon: Icon(Icons.repeat_one_rounded),
-              label: 'Routines',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings_rounded),
-              label: 'Settings',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -453,7 +529,8 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBindingObserver {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with WidgetsBindingObserver {
   final _controller = PageController();
   AlarmReadiness? _readiness;
   var _page = 0;
@@ -502,76 +579,107 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
       widget.onComplete();
       return;
     }
-    _controller.nextPage(duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   List<_OnboardingPage> get _pages => [
-        _OnboardingPage(
-          icon: Icons.waving_hand_outlined,
-          title: 'Welcome to Speaking Clock',
-          body: 'A calm reminder app for the moments when work pulls you too deep.',
-          primaryLabel: 'Start setup',
-          onPrimary: _next,
-        ),
-        _OnboardingPage(
-          icon: Icons.tune_rounded,
-          title: 'Choose the right reminder strength',
-          body: 'Gentle reminders are light. Alarm reminders keep ringing until acknowledged. Speaking alarms say your custom message first, then ring.',
-          primaryLabel: 'Continue',
-          onPrimary: _next,
-        ),
-        _OnboardingPage(
-          icon: Icons.notifications_active_outlined,
-          title: 'Allow notifications',
-          body: 'Speaking Clock needs notifications so reminders can appear even when the app is not open.',
-          ready: _readiness?.notificationsEnabled,
-          primaryLabel: _readiness?.notificationsEnabled == true ? 'Notifications ready' : 'Allow notifications',
-          onPrimary: _readiness?.notificationsEnabled == true ? _next : () => _run(ReliabilityPlatform.requestNotifications),
-        ),
-        _OnboardingPage(
-          icon: Icons.alarm_on_rounded,
-          title: 'Allow exact alarms',
-          body: 'Important alarms need exact alarm access so Android lets them fire at the time you chose.',
-          ready: _readiness?.exactAlarmEnabled,
-          primaryLabel: _readiness?.exactAlarmEnabled == true ? 'Exact alarms ready' : 'Allow exact alarms',
-          onPrimary: _readiness?.exactAlarmEnabled == true ? _next : () => _run(ReliabilityPlatform.requestExactAlarms),
-        ),
-        _OnboardingPage(
-          icon: Icons.phone_android_rounded,
-          title: 'Allow full-screen alarms',
-          body: 'This lets Alarm Reminder and Speaking Alarm show the lock-screen alarm screen with Acknowledge and Snooze.',
-          ready: _readiness?.fullScreenIntentEnabled,
-          primaryLabel: _readiness?.fullScreenIntentEnabled == true ? 'Full-screen ready' : 'Open full-screen setting',
-          onPrimary: _readiness?.fullScreenIntentEnabled == true ? _next : () => _run(ReliabilityPlatform.openFullScreenIntentSettings),
-        ),
-        _OnboardingPage(
-          icon: Icons.do_not_disturb_on_outlined,
-          title: 'Do Not Disturb behavior',
-          body: 'Recommended: allow alarm behavior during Do Not Disturb. Without this, reliable alarms may stay quiet when DND is active.',
-          ready: _readiness?.dndPolicyAccess,
-          primaryLabel: _readiness?.dndPolicyAccess == true ? 'DND ready' : 'Open DND setting',
-          onPrimary: _readiness?.dndPolicyAccess == true ? _next : () => _run(ReliabilityPlatform.openDndSettings),
-          secondaryLabel: 'I will do this later',
-          onSecondary: _next,
-        ),
-        _OnboardingPage(
-          icon: Icons.volume_up_outlined,
-          title: 'Check alarm volume',
-          body: 'Keep alarm volume above the lowest level. Speaking Clock can speak and ring only when Android’s alarm volume is safely audible.',
-          ready: _readiness?.alarmVolumeEnabled,
-          primaryLabel: _readiness?.alarmVolumeEnabled == true ? 'Volume ready' : 'Check again',
-          onPrimary: _readiness?.alarmVolumeEnabled == true ? _next : () => _run(_refresh),
-          secondaryLabel: 'Continue anyway',
-          onSecondary: _next,
-        ),
-        _OnboardingPage(
-          icon: Icons.verified_rounded,
-          title: 'You are ready',
-          body: 'Create a short test alarm from the Today screen when you want to verify the lock-screen flow again.',
-          primaryLabel: 'Go to Today',
-          onPrimary: _next,
-        ),
-      ];
+    _OnboardingPage(
+      icon: Icons.waving_hand_outlined,
+      title: 'Welcome to Speaking Clock',
+      body:
+          'A calm reminder app for the moments when focus pulls you too deep.',
+      primaryLabel: 'Set up my reminders',
+      onPrimary: _next,
+    ),
+    _OnboardingPage(
+      icon: Icons.tune_rounded,
+      title: 'Choose how strongly it should interrupt',
+      body:
+          'Gentle is a light nudge. Alarm keeps ringing until acknowledged. Speaking says your custom message first, then rings.',
+      primaryLabel: 'Continue',
+      onPrimary: _next,
+    ),
+    _OnboardingPage(
+      icon: Icons.notifications_active_outlined,
+      title: 'Allow notifications',
+      body:
+          'Reminders need notifications so they can appear while the app is closed or you are using something else.',
+      ready: _readiness?.notificationsEnabled,
+      primaryLabel: _readiness?.notificationsEnabled == true
+          ? 'Notifications ready'
+          : 'Allow notifications',
+      onPrimary: _readiness?.notificationsEnabled == true
+          ? _next
+          : () => _run(ReliabilityPlatform.requestNotifications),
+    ),
+    _OnboardingPage(
+      icon: Icons.alarm_on_rounded,
+      title: 'Allow exact alarms',
+      body:
+          'Important reminders need exact alarm access so Android lets them fire at the time you chose.',
+      ready: _readiness?.exactAlarmEnabled,
+      primaryLabel: _readiness?.exactAlarmEnabled == true
+          ? 'Exact alarms ready'
+          : 'Allow exact alarms',
+      onPrimary: _readiness?.exactAlarmEnabled == true
+          ? _next
+          : () => _run(ReliabilityPlatform.requestExactAlarms),
+    ),
+    _OnboardingPage(
+      icon: Icons.phone_android_rounded,
+      title: 'Allow full-screen alarms',
+      body:
+          'This lets Alarm Reminder and Speaking Alarm show the calm lock-screen screen with Acknowledge and Snooze.',
+      ready: _readiness?.fullScreenIntentEnabled,
+      primaryLabel: _readiness?.fullScreenIntentEnabled == true
+          ? 'Full-screen ready'
+          : 'Open full-screen setting',
+      onPrimary: _readiness?.fullScreenIntentEnabled == true
+          ? _next
+          : () => _run(ReliabilityPlatform.openFullScreenIntentSettings),
+    ),
+    _OnboardingPage(
+      icon: Icons.do_not_disturb_on_outlined,
+      title: 'Do Not Disturb behavior',
+      body:
+          'Recommended: allow reliable alarms to interrupt Do Not Disturb. Android alarms may still fire, but this keeps behavior clearer.',
+      ready: _readiness?.dndPolicyAccess,
+      primaryLabel: _readiness?.dndPolicyAccess == true
+          ? 'DND ready'
+          : 'Open DND setting',
+      onPrimary: _readiness?.dndPolicyAccess == true
+          ? _next
+          : () => _run(ReliabilityPlatform.openDndSettings),
+      secondaryLabel: 'I will do this later',
+      onSecondary: _next,
+    ),
+    _OnboardingPage(
+      icon: Icons.volume_up_outlined,
+      title: 'Check alarm volume',
+      body:
+          'Keep alarm volume above the lowest level. Speaking alarms and alarm reminders need Android’s alarm volume to be safely audible.',
+      ready: _readiness?.alarmVolumeEnabled,
+      primaryLabel: _readiness?.alarmVolumeEnabled == true
+          ? 'Volume ready'
+          : 'Check again',
+      onPrimary: _readiness?.alarmVolumeEnabled == true
+          ? _next
+          : () => _run(_refresh),
+      secondaryLabel: 'Continue anyway',
+      onSecondary: _next,
+    ),
+    _OnboardingPage(
+      icon: Icons.verified_rounded,
+      title: 'You are ready',
+      body:
+          'Create a short test reminder whenever you want to verify the flow again.',
+      primaryLabel: 'Go to Today',
+      onPrimary: _next,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -593,7 +701,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('${_page + 1}/${pages.length}', style: _sectionLabel(context)),
+                  Text(
+                    '${_page + 1}/${pages.length}',
+                    style: _sectionLabel(context),
+                  ),
                 ],
               ),
               Expanded(
@@ -601,20 +712,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> with WidgetsBinding
                   controller: _controller,
                   onPageChanged: (value) => setState(() => _page = value),
                   itemCount: pages.length,
-                  itemBuilder: (context, index) => _OnboardingPageView(page: pages[index], loading: _loading),
+                  itemBuilder: (context, index) => _OnboardingPageView(
+                    page: pages[index],
+                    loading: _loading,
+                  ),
                 ),
               ),
               Row(
                 children: [
                   if (_page > 0)
                     TextButton(
-                      onPressed: () => _controller.previousPage(duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic),
+                      onPressed: () => _controller.previousPage(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                      ),
                       child: const Text('Back'),
                     )
                   else
                     const SizedBox(width: 72),
                   const Spacer(),
-                  TextButton(onPressed: widget.onComplete, child: const Text('Skip')),
+                  TextButton(
+                    onPressed: widget.onComplete,
+                    child: const Text('Skip'),
+                  ),
                 ],
               ),
             ],
@@ -668,27 +788,45 @@ class _OnboardingPageView extends StatelessWidget {
                 color: ready ? AppColors.sageLight : AppColors.amberLight,
                 borderRadius: BorderRadius.circular(30),
               ),
-              child: Icon(ready ? Icons.check_rounded : page.icon, size: 42, color: ready ? AppColors.sage : AppColors.amber),
+              child: Icon(
+                ready ? Icons.check_rounded : page.icon,
+                size: 42,
+                color: ready ? AppColors.sage : AppColors.amber,
+              ),
             ),
             const SizedBox(height: 28),
             Text(
               page.title,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 12),
-            Text(page.body, textAlign: TextAlign.center, style: _subtle(context)),
+            Text(
+              page.body,
+              textAlign: TextAlign.center,
+              style: _subtle(context),
+            ),
             const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: loading ? null : page.onPrimary,
-                child: loading ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Text(page.primaryLabel),
+                child: loading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(page.primaryLabel),
               ),
             ),
             if (page.secondaryLabel != null && page.onSecondary != null) ...[
               const SizedBox(height: 8),
-              TextButton(onPressed: loading ? null : page.onSecondary, child: Text(page.secondaryLabel!)),
+              TextButton(
+                onPressed: loading ? null : page.onSecondary,
+                child: Text(page.secondaryLabel!),
+              ),
             ],
           ],
         ),
@@ -716,25 +854,30 @@ class TodayScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final next = reminders.isEmpty ? null : reminders.first;
+    final warnings = _readinessWarnings(readiness);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 108),
       children: [
+        _TodayHeader(readiness: readiness),
+        if (warnings.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          PermissionWarningCard(
+            messages: warnings,
+            onReview: onOpenReliability,
+          ),
+        ],
+        const SizedBox(height: 28),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Good morning', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 4),
-                Text(_friendlyDate(DateTime.now()), style: _subtle(context)),
-              ],
-            ),
-            ReadinessChip(readiness: readiness),
+            Text('Next up', style: _sectionLabel(context)),
+            const SizedBox(width: 8),
+            if (next != null)
+              _TinyBadge(
+                label: next.enabled ? 'Active' : 'Paused',
+                color: next.enabled ? AppColors.sage : AppColors.amber,
+              ),
           ],
         ),
-        const SizedBox(height: 30),
-        Text('NEXT UP', style: _sectionLabel(context)),
         const SizedBox(height: 10),
         if (next == null)
           EmptyReminderCard(onAdd: onAdd)
@@ -749,28 +892,78 @@ class TodayScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        ...reminders.skip(next == null ? 0 : 1).map(
+        ...reminders
+            .skip(next == null ? 0 : 1)
+            .map(
               (reminder) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: ReminderRow(reminder: reminder, onTap: () => onOpenReminder(reminder)),
+                child: ReminderRow(
+                  reminder: reminder,
+                  onTap: () => onOpenReminder(reminder),
+                ),
               ),
             ),
         const SizedBox(height: 18),
-        if (_readinessWarnings(readiness).isNotEmpty) ...[
-          PermissionWarningCard(
-            messages: _readinessWarnings(readiness),
-            onReview: onOpenReliability,
-          ),
-          const SizedBox(height: 12),
-        ],
         const ReliabilityNote(),
       ],
     );
   }
 }
 
+class _TodayHeader extends StatelessWidget {
+  const _TodayHeader({required this.readiness});
+
+  final AlarmReadiness? readiness;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: AppColors.sageLight,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(Icons.wb_sunny_outlined, color: AppColors.sage),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _greeting(),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 3),
+                Text(_friendlyDate(DateTime.now()), style: _subtle(context)),
+              ],
+            ),
+          ),
+          ReadinessChip(readiness: readiness),
+        ],
+      ),
+    );
+  }
+}
+
 class PermissionWarningCard extends StatelessWidget {
-  const PermissionWarningCard({super.key, required this.messages, required this.onReview});
+  const PermissionWarningCard({
+    super.key,
+    required this.messages,
+    required this.onReview,
+  });
 
   final List<String> messages;
   final VoidCallback onReview;
@@ -779,7 +972,10 @@ class PermissionWarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.amberLight, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(
+        color: AppColors.amberLight,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -789,12 +985,21 @@ class PermissionWarningCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Reliable Alarm needs attention', style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.ink)),
+                const Text(
+                  'Reliable Alarm needs attention',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.ink,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 ...messages.map(
                   (message) => Padding(
                     padding: const EdgeInsets.only(top: 3),
-                    child: Text('• $message', style: const TextStyle(height: 1.3)),
+                    child: Text(
+                      '• $message',
+                      style: const TextStyle(height: 1.3),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -820,22 +1025,67 @@ class EmptyReminderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.notifications_none_rounded, color: AppColors.sage),
-          const SizedBox(height: 12),
-          Text('No reminders yet', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+          Container(
+            height: 58,
+            width: 58,
+            decoration: BoxDecoration(
+              color: AppColors.sageLight,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              color: AppColors.sage,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Your day is quiet',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 6),
-          Text('Create a gentle reminder, alarm reminder, or speaking alarm.', style: _subtle(context)),
+          Text(
+            'Create a gentle nudge, a full-screen alarm, or a spoken reminder when something matters.',
+            style: _subtle(context),
+          ),
           const SizedBox(height: 14),
-          FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Add reminder')),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TinyBadge(
+                label: 'Drink water',
+                color: AppColors.blue,
+                icon: Icons.water_drop_outlined,
+              ),
+              _TinyBadge(
+                label: 'Stretch',
+                color: AppColors.sage,
+                icon: Icons.self_improvement_outlined,
+              ),
+              _TinyBadge(
+                label: 'Meeting prep',
+                color: AppColors.amber,
+                icon: Icons.videocam_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Create your first reminder'),
+          ),
         ],
       ),
     );
@@ -860,11 +1110,58 @@ class ReadinessChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(ready ? Icons.check_circle_rounded : Icons.info_outline_rounded, size: 16, color: ready ? AppColors.sage : AppColors.amber),
+          Icon(
+            ready ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+            size: 16,
+            color: ready ? AppColors.sage : AppColors.amber,
+          ),
           const SizedBox(width: 5),
           Text(
-            unknown ? 'Checking' : ready ? 'Ready' : 'Needs setup',
-            style: TextStyle(color: ready ? AppColors.sage : AppColors.amber, fontWeight: FontWeight.w800),
+            unknown
+                ? 'Checking'
+                : ready
+                ? 'Ready'
+                : 'Needs setup',
+            style: TextStyle(
+              color: ready ? AppColors.sage : AppColors.amber,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TinyBadge extends StatelessWidget {
+  const _TinyBadge({required this.label, required this.color, this.icon});
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -873,19 +1170,31 @@ class ReadinessChip extends StatelessWidget {
 }
 
 class NextReminderCard extends StatelessWidget {
-  const NextReminderCard({super.key, required this.reminder, required this.onOpen});
+  const NextReminderCard({
+    super.key,
+    required this.reminder,
+    required this.onOpen,
+  });
 
   final Reminder reminder;
   final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
+    final accent = _deliveryAccent(reminder.deliveryMode);
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border.all(color: AppColors.line),
         borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -894,26 +1203,69 @@ class NextReminderCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ReminderIcon(type: reminder.type, large: true),
-              IconButton(onPressed: onOpen, icon: const Icon(Icons.more_horiz_rounded)),
+              _TinyBadge(
+                label: _deliveryShortLabel(reminder.deliveryMode),
+                color: accent,
+                icon: _deliveryIcon(reminder.deliveryMode),
+              ),
             ],
           ),
           const SizedBox(height: 22),
-          Text(reminder.time, style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            reminder.time,
+            style: Theme.of(
+              context,
+            ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 2),
-          Text(reminder.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text(reminder.detail, style: _subtle(context)),
+          Text(
+            reminder.title,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _TinyBadge(
+                label: _repeatRule(reminder),
+                color: AppColors.sage,
+                icon: Icons.repeat_rounded,
+              ),
+              _TinyBadge(
+                label: _toneLabel(reminder.tone),
+                color: AppColors.amber,
+                icon: _toneIcon(reminder.tone),
+              ),
+              if (reminder.isSpeakingAlarm)
+                const _TinyBadge(
+                  label: 'Speaks',
+                  color: AppColors.amber,
+                  icon: Icons.record_voice_over_rounded,
+                ),
+            ],
+          ),
           if (!reminder.enabled) ...[
-            const SizedBox(height: 8),
-            const Text('Paused', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w800)),
-          ],
-          const SizedBox(height: 20),
-          FilledButton.tonalIcon(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${reminder.title} snoozed for 10 minutes')),
+            const SizedBox(height: 12),
+            const _TinyBadge(
+              label: 'Paused',
+              color: AppColors.amber,
+              icon: Icons.pause_circle_outline_rounded,
             ),
-            icon: const Icon(Icons.snooze_rounded),
-            label: const Text('Snooze 10 min'),
+          ],
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: onOpen,
+            icon: const Icon(Icons.tune_rounded),
+            label: const Text('Open reminder'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(46),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ),
         ],
       ),
@@ -929,45 +1281,88 @@ class ReminderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = _deliveryAccent(reminder.deliveryMode);
     return Material(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: reminder.enabled
+                ? Theme.of(context).colorScheme.surface
+                : Theme.of(context).colorScheme.surface.withValues(alpha: 0.58),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.line),
+          ),
           child: Row(
-        children: [
-          ReminderIcon(type: reminder.type),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  reminder.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: reminder.enabled ? null : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(reminder.detail, style: _subtle(context, small: true)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(reminder.time, style: const TextStyle(fontWeight: FontWeight.w800)),
-              if (!reminder.enabled)
-                const Padding(padding: EdgeInsets.only(top: 4), child: Icon(Icons.pause_circle_outline_rounded, size: 16, color: AppColors.amber))
-              else if (reminder.isAlarm)
-                const Padding(padding: EdgeInsets.only(top: 4), child: Icon(Icons.volume_up_rounded, size: 15, color: AppColors.amber)),
+              ReminderIcon(type: reminder.type),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reminder.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: reminder.enabled
+                            ? null
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _TinyBadge(
+                          label: _deliveryShortLabel(reminder.deliveryMode),
+                          color: accent,
+                          icon: _deliveryIcon(reminder.deliveryMode),
+                        ),
+                        _TinyBadge(
+                          label: _repeatRule(reminder),
+                          color: AppColors.sage,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    reminder.time,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  if (!reminder.enabled)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Icon(
+                        Icons.pause_circle_outline_rounded,
+                        size: 16,
+                        color: AppColors.amber,
+                      ),
+                    )
+                  else if (reminder.isAlarm)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Icon(
+                        reminder.isSpeakingAlarm
+                            ? Icons.record_voice_over_rounded
+                            : Icons.alarm_rounded,
+                        size: 15,
+                        color: accent,
+                      ),
+                    ),
+                ],
+              ),
             ],
-          ),
-        ],
           ),
         ),
       ),
@@ -985,7 +1380,10 @@ class ReminderIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = switch (type) {
       ReminderType.water => (Icons.water_drop_outlined, AppColors.blue),
-      ReminderType.breakTime => (Icons.self_improvement_outlined, AppColors.sage),
+      ReminderType.breakTime => (
+        Icons.self_improvement_outlined,
+        AppColors.sage,
+      ),
       ReminderType.meeting => (Icons.videocam_outlined, AppColors.amber),
       ReminderType.medication => (Icons.medication_outlined, AppColors.amber),
       ReminderType.custom => (Icons.notifications_none_rounded, AppColors.sage),
@@ -1010,13 +1408,21 @@ class ReliabilityNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.sageLight, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(
+        color: AppColors.sageLight,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.verified_user_outlined, color: AppColors.sage),
           SizedBox(width: 10),
-          Expanded(child: Text('Set up Reliable Alarm before using it for important reminders. We will check the required device permissions for you.', style: TextStyle(height: 1.35))),
+          Expanded(
+            child: Text(
+              'Set up Reliable Alarm before using it for important reminders. We will check the required device permissions for you.',
+              style: TextStyle(height: 1.35),
+            ),
+          ),
         ],
       ),
     );
@@ -1028,66 +1434,296 @@ class RoutinesScreen extends StatelessWidget {
     super.key,
     required this.reminders,
     required this.onAdd,
-    required this.onAddForType,
+    required this.onUseTemplate,
     required this.onOpenReminder,
   });
 
   final List<Reminder> reminders;
   final VoidCallback onAdd;
-  final ValueChanged<ReminderType> onAddForType;
+  final ValueChanged<ReminderDraft> onUseTemplate;
   final ValueChanged<Reminder> onOpenReminder;
 
   @override
   Widget build(BuildContext context) {
+    final routines = reminders
+        .where((item) => item.type != ReminderType.meeting)
+        .toList();
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 108),
       children: [
-        Text('Routines', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 7),
-        Text('Small prompts for a better workday.', style: _subtle(context)),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                height: 52,
+                width: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.sageLight,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppColors.sage,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Routines',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Quick-start reminders for a healthier workday.',
+                      style: _subtle(context),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 28),
-        Text('QUICK START', style: _sectionLabel(context)),
+        Text('Quick start', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            RoutinePreset(icon: Icons.water_drop_outlined, label: 'Drink water', onTap: () => onAddForType(ReminderType.water)),
-            RoutinePreset(icon: Icons.visibility_outlined, label: 'Eye break', onTap: () => onAddForType(ReminderType.breakTime)),
-            RoutinePreset(icon: Icons.self_improvement_outlined, label: 'Stretch', onTap: () => onAddForType(ReminderType.breakTime)),
-            RoutinePreset(icon: Icons.directions_walk_outlined, label: 'Walk', onTap: () => onAddForType(ReminderType.breakTime)),
-          ],
+        ..._routineTemplates.map(
+          (template) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: RoutinePreset(
+              template: template,
+              onTap: () => onUseTemplate(template.draft),
+            ),
+          ),
         ),
         const SizedBox(height: 30),
-        Text('YOUR ROUTINES', style: _sectionLabel(context)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Your routines', style: _sectionLabel(context)),
+            _TinyBadge(label: '${routines.length}', color: AppColors.sage),
+          ],
+        ),
         const SizedBox(height: 10),
-        ...reminders.where((item) => item.type != ReminderType.meeting).map((item) => Padding(padding: const EdgeInsets.only(bottom: 10), child: ReminderRow(reminder: item, onTap: () => onOpenReminder(item)))),
+        if (routines.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Text(
+              'No routines yet. Pick a quick-start template above or create your own.',
+              style: _subtle(context),
+            ),
+          )
+        else
+          ...routines.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ReminderRow(
+                reminder: item,
+                onTap: () => onOpenReminder(item),
+              ),
+            ),
+          ),
         const SizedBox(height: 10),
-        OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Create a custom routine')),
+        FilledButton.tonalIcon(
+          onPressed: onAdd,
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Create a custom routine'),
+        ),
       ],
     );
   }
 }
 
-class RoutinePreset extends StatelessWidget {
-  const RoutinePreset({super.key, required this.icon, required this.label, required this.onTap});
+class RoutineTemplate {
+  const RoutineTemplate({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.draft,
+  });
 
   final IconData icon;
-  final String label;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final ReminderDraft draft;
+}
+
+const _routineTemplates = [
+  RoutineTemplate(
+    icon: Icons.water_drop_outlined,
+    title: 'Drink water',
+    subtitle: 'A gentle hydration nudge during work.',
+    color: AppColors.blue,
+    draft: ReminderDraft(
+      title: 'Drink water',
+      type: ReminderType.water,
+      deliveryMode: DeliveryMode.gentle,
+      repeatRule: 'Every 60 min',
+      tone: ToneOption.calmWater,
+      snoozeMinutes: 10,
+    ),
+  ),
+  RoutineTemplate(
+    icon: Icons.self_improvement_outlined,
+    title: 'Stand and stretch',
+    subtitle: 'Step away from the desk for a quick reset.',
+    color: AppColors.sage,
+    draft: ReminderDraft(
+      title: 'Stand and stretch',
+      type: ReminderType.breakTime,
+      deliveryMode: DeliveryMode.gentle,
+      repeatRule: 'Every 90 min',
+      tone: ToneOption.softChime,
+      snoozeMinutes: 10,
+    ),
+  ),
+  RoutineTemplate(
+    icon: Icons.visibility_outlined,
+    title: 'Eye break',
+    subtitle: 'Look away from the screen and relax your eyes.',
+    color: AppColors.blue,
+    draft: ReminderDraft(
+      title: 'Eye break',
+      type: ReminderType.breakTime,
+      deliveryMode: DeliveryMode.gentle,
+      repeatRule: 'Every 30 min',
+      tone: ToneOption.softChime,
+      snoozeMinutes: 5,
+    ),
+  ),
+  RoutineTemplate(
+    icon: Icons.medication_outlined,
+    title: 'Medication',
+    subtitle: 'A stronger reminder for something important.',
+    color: AppColors.amber,
+    draft: ReminderDraft(
+      title: 'Take medication',
+      type: ReminderType.medication,
+      deliveryMode: DeliveryMode.alarm,
+      repeatRule: 'Every day',
+      tone: ToneOption.classicAlarm,
+      snoozeMinutes: 5,
+    ),
+  ),
+  RoutineTemplate(
+    icon: Icons.videocam_outlined,
+    title: 'Meeting prep',
+    subtitle: 'A spoken nudge before you need to join.',
+    color: AppColors.amber,
+    draft: ReminderDraft(
+      title: 'Meeting prep',
+      type: ReminderType.meeting,
+      deliveryMode: DeliveryMode.speaking,
+      repeatRule: 'Once',
+      tone: ToneOption.morningBell,
+      spokenMessage: 'Your meeting starts soon.',
+      snoozeMinutes: 5,
+    ),
+  ),
+  RoutineTemplate(
+    icon: Icons.coffee_outlined,
+    title: 'Deep work break',
+    subtitle: 'A reliable interruption after a focused sprint.',
+    color: AppColors.sage,
+    draft: ReminderDraft(
+      title: 'Deep work break',
+      type: ReminderType.breakTime,
+      deliveryMode: DeliveryMode.alarm,
+      repeatRule: 'Every 120 min',
+      tone: ToneOption.digitalBeep,
+      snoozeMinutes: 10,
+    ),
+  ),
+];
+
+class RoutinePreset extends StatelessWidget {
+  const RoutinePreset({super.key, required this.template, required this.onTap});
+
+  final RoutineTemplate template;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
-          width: 152,
-          padding: const EdgeInsets.all(15),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: AppColors.sage), const SizedBox(height: 16), Text(label, style: const TextStyle(fontWeight: FontWeight.w800))]),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                height: 50,
+                width: 50,
+                decoration: BoxDecoration(
+                  color: template.color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Icon(template.icon, color: template.color),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      template.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      template.subtitle,
+                      style: _subtle(context, small: true),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _TinyBadge(
+                          label: _deliveryShortLabel(
+                            template.draft.deliveryMode,
+                          ),
+                          color: _deliveryAccent(template.draft.deliveryMode),
+                          icon: _deliveryIcon(template.draft.deliveryMode),
+                        ),
+                        _TinyBadge(
+                          label: template.draft.repeatRule,
+                          color: AppColors.sage,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.sage),
+            ],
+          ),
         ),
       ),
     );
@@ -1098,28 +1734,159 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
     required this.darkMode,
+    required this.readiness,
     required this.onDarkModeChanged,
     required this.onOpenReliability,
   });
 
   final bool darkMode;
+  final AlarmReadiness? readiness;
   final ValueChanged<bool> onDarkModeChanged;
   final VoidCallback onOpenReliability;
 
   @override
   Widget build(BuildContext context) {
+    final ready = readiness?.isReady ?? false;
+    final checking = readiness == null;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
       children: [
-        Text('Settings', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                height: 52,
+                width: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.sageLight,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.settings_rounded,
+                  color: AppColors.sage,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Settings',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Control reliability, reminders, and app preferences.',
+                      style: _subtle(context),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 28),
-        Text('RELIABILITY', style: _sectionLabel(context)),
+        Text('Reliability', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        SettingTile(icon: Icons.verified_user_outlined, title: 'Reliable Alarm', subtitle: 'Finish setup on this device', onTap: onOpenReliability),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: ready ? AppColors.sageLight : AppColors.amberLight,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    ready ? Icons.verified_rounded : Icons.info_outline_rounded,
+                    color: ready ? AppColors.sage : AppColors.amber,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      checking
+                          ? 'Checking Reliable Alarm'
+                          : ready
+                          ? 'Reliable Alarm is ready'
+                          : 'Reliable Alarm needs attention',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
+                  _TinyBadge(
+                    label: checking
+                        ? 'Checking'
+                        : ready
+                        ? 'Ready'
+                        : 'Review',
+                    color: ready ? AppColors.sage : AppColors.amber,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                ready
+                    ? 'Alarm Reminder and Speaking Alarm can use Android’s reliable alarm path on this device.'
+                    : 'Review notifications, exact alarms, full-screen behavior, DND, and alarm volume before relying on important reminders.',
+                style: const TextStyle(height: 1.35),
+              ),
+              const SizedBox(height: 14),
+              FilledButton.tonalIcon(
+                onPressed: onOpenReliability,
+                icon: const Icon(Icons.shield_outlined),
+                label: const Text('Review setup'),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 10),
-        const SettingTile(icon: Icons.calendar_month_outlined, title: 'Google Calendar', subtitle: 'Connect your meetings'),
+        const SettingTile(
+          icon: Icons.bug_report_outlined,
+          title: 'Troubleshooting',
+          subtitle: 'Debug/status screen coming soon',
+        ),
         const SizedBox(height: 30),
-        Text('PREFERENCES', style: _sectionLabel(context)),
+        Text('Reminder behavior', style: _sectionLabel(context)),
+        const SizedBox(height: 10),
+        const SettingTile(
+          icon: Icons.notifications_active_outlined,
+          title: 'Reminder types',
+          subtitle: 'Gentle, Alarm, and Speaking reminders',
+        ),
+        const SizedBox(height: 10),
+        const SettingTile(
+          icon: Icons.volume_up_outlined,
+          title: 'Voice and sound',
+          subtitle: 'Built-in tones · Spoken messages',
+        ),
+        const SizedBox(height: 30),
+        Text('Integrations', style: _sectionLabel(context)),
+        const SizedBox(height: 10),
+        const SettingTile(
+          icon: Icons.calendar_month_outlined,
+          title: 'Google Calendar',
+          subtitle: 'Meeting reminders planned for Phase 4',
+        ),
+        const SizedBox(height: 10),
+        const SettingTile(
+          icon: Icons.video_call_outlined,
+          title: 'Microsoft Teams / Outlook',
+          subtitle: 'Calendar support planned after Google Calendar',
+        ),
+        const SizedBox(height: 30),
+        Text('Preferences', style: _sectionLabel(context)),
         const SizedBox(height: 10),
         Material(
           color: Theme.of(context).colorScheme.surface,
@@ -1128,23 +1895,32 @@ class SettingsScreen extends StatelessWidget {
             value: darkMode,
             onChanged: onDarkModeChanged,
             secondary: const Icon(Icons.dark_mode_outlined),
-            title: const Text('Dark mode', style: TextStyle(fontWeight: FontWeight.w800)),
+            title: const Text(
+              'Dark mode',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
             subtitle: const Text('Use a calmer dark appearance'),
           ),
         ),
         const SizedBox(height: 10),
-        const SettingTile(icon: Icons.volume_up_outlined, title: 'Voice and sound', subtitle: 'System voice · Gentle chime'),
-        const SizedBox(height: 30),
-        Text('ACCOUNT', style: _sectionLabel(context)),
-        const SizedBox(height: 10),
-        const SettingTile(icon: Icons.person_outline_rounded, title: 'Sign in to sync', subtitle: 'Keep reminders across your devices'),
+        const SettingTile(
+          icon: Icons.person_outline_rounded,
+          title: 'Sync account',
+          subtitle: 'Coming later for multi-device reminders',
+        ),
       ],
     );
   }
 }
 
 class SettingTile extends StatelessWidget {
-  const SettingTile({super.key, required this.icon, required this.title, required this.subtitle, this.onTap});
+  const SettingTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+  });
 
   final IconData icon;
   final String title;
@@ -1160,7 +1936,9 @@ class SettingTile extends StatelessWidget {
         leading: Icon(icon, color: AppColors.sage),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: onTap == null
+            ? null
+            : const Icon(Icons.chevron_right_rounded),
         onTap: onTap,
       ),
     );
@@ -1174,7 +1952,8 @@ class ReliabilityScreen extends StatefulWidget {
   State<ReliabilityScreen> createState() => _ReliabilityScreenState();
 }
 
-class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindingObserver {
+class _ReliabilityScreenState extends State<ReliabilityScreen>
+    with WidgetsBindingObserver {
   AlarmReadiness? _readiness;
   Object? _error;
   var _loading = true;
@@ -1236,28 +2015,48 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(ready ? Icons.verified_rounded : Icons.info_outline_rounded, color: ready ? AppColors.sage : AppColors.amber, size: 28),
+                      Icon(
+                        ready
+                            ? Icons.verified_rounded
+                            : Icons.info_outline_rounded,
+                        color: ready ? AppColors.sage : AppColors.amber,
+                        size: 28,
+                      ),
                       const SizedBox(height: 12),
-                      Text(ready ? 'Reliable Alarm is ready' : 'Finish setup for Reliable Alarm', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        ready
+                            ? 'Reliable Alarm is ready'
+                            : 'Finish setup for Reliable Alarm',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 6),
-                      Text(ready ? 'Important reminders can use Android’s alarm channel and spoken voice.' : 'Complete each item below before relying on a spoken alarm.'),
+                      Text(
+                        ready
+                            ? 'Important reminders can use Android’s alarm channel and spoken voice.'
+                            : 'Complete each item below before relying on a spoken alarm.',
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 26),
-                if (_error != null) Text('Unable to read device status: $_error'),
+                if (_error != null)
+                  Text('Unable to read device status: $_error'),
                 _ReadinessItem(
                   title: 'Notifications',
                   detail: 'Allow Speaking Clock notifications',
                   ready: _readiness?.notificationsEnabled ?? false,
-                  action: () => _perform(ReliabilityPlatform.requestNotifications),
+                  action: () =>
+                      _perform(ReliabilityPlatform.requestNotifications),
                   actionLabel: 'Allow',
                 ),
                 _ReadinessItem(
                   title: 'Exact alarms',
                   detail: 'Let important alarms fire at their exact time',
                   ready: _readiness?.exactAlarmEnabled ?? false,
-                  action: () => _perform(ReliabilityPlatform.requestExactAlarms),
+                  action: () =>
+                      _perform(ReliabilityPlatform.requestExactAlarms),
                   actionLabel: 'Allow',
                 ),
                 _ReadinessItem(
@@ -1271,7 +2070,9 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
                   title: 'Full-screen alarms',
                   detail: 'Let alarms take over the lock screen',
                   ready: _readiness?.fullScreenIntentEnabled ?? false,
-                  action: () => _perform(ReliabilityPlatform.openFullScreenIntentSettings),
+                  action: () => _perform(
+                    ReliabilityPlatform.openFullScreenIntentSettings,
+                  ),
                   actionLabel: 'Open settings',
                 ),
                 _ReadinessItem(
@@ -1282,7 +2083,11 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
                   actionLabel: 'Check again',
                 ),
                 const SizedBox(height: 24),
-                OutlinedButton.icon(onPressed: _refresh, icon: const Icon(Icons.refresh_rounded), label: const Text('Refresh device status')),
+                OutlinedButton.icon(
+                  onPressed: _refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh device status'),
+                ),
               ],
             ),
     );
@@ -1290,7 +2095,13 @@ class _ReliabilityScreenState extends State<ReliabilityScreen> with WidgetsBindi
 }
 
 class _ReadinessItem extends StatelessWidget {
-  const _ReadinessItem({required this.title, required this.detail, required this.ready, required this.action, required this.actionLabel});
+  const _ReadinessItem({
+    required this.title,
+    required this.detail,
+    required this.ready,
+    required this.action,
+    required this.actionLabel,
+  });
 
   final String title;
   final String detail;
@@ -1306,10 +2117,24 @@ class _ReadinessItem extends StatelessWidget {
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         child: ListTile(
-          leading: Icon(ready ? Icons.check_circle_rounded : Icons.circle_outlined, color: ready ? AppColors.sage : AppColors.amber),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          leading: Icon(
+            ready ? Icons.check_circle_rounded : Icons.circle_outlined,
+            color: ready ? AppColors.sage : AppColors.amber,
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           subtitle: Text(detail),
-          trailing: ready ? const Text('Ready', style: TextStyle(color: AppColors.sage, fontWeight: FontWeight.w800)) : TextButton(onPressed: action, child: Text(actionLabel)),
+          trailing: ready
+              ? const Text(
+                  'Ready',
+                  style: TextStyle(
+                    color: AppColors.sage,
+                    fontWeight: FontWeight.w800,
+                  ),
+                )
+              : TextButton(onPressed: action, child: Text(actionLabel)),
         ),
       ),
     );
@@ -1336,7 +2161,11 @@ class ReminderDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Reminder details'),
         actions: [
-          IconButton(tooltip: 'Edit reminder', onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
+          IconButton(
+            tooltip: 'Edit reminder',
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
           IconButton(
             tooltip: 'Delete reminder',
             onPressed: () => _confirmDelete(context),
@@ -1349,18 +2178,38 @@ class ReminderDetailScreen extends StatelessWidget {
         children: [
           Center(child: ReminderIcon(type: reminder.type, large: true)),
           const SizedBox(height: 20),
-          Text(reminder.title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            reminder.title,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
-          Text(reminder.time, textAlign: TextAlign.center, style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            reminder.time,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 28),
           _DetailCard(label: 'Schedule', value: reminder.detail),
           const SizedBox(height: 10),
-          _DetailCard(label: 'Delivery', value: _deliveryLabel(reminder.deliveryMode)),
+          _DetailCard(
+            label: 'Delivery',
+            value: _deliveryLabel(reminder.deliveryMode),
+          ),
           const SizedBox(height: 10),
           _DetailCard(label: 'Tone', value: _toneLabel(reminder.tone)),
           if (reminder.isSpeakingAlarm) ...[
             const SizedBox(height: 10),
-            _DetailCard(label: 'Spoken message', value: reminder.spokenMessage.isEmpty ? 'It is time for ${reminder.title}' : reminder.spokenMessage),
+            _DetailCard(
+              label: 'Spoken message',
+              value: reminder.spokenMessage.isEmpty
+                  ? 'It is time for ${reminder.title}'
+                  : reminder.spokenMessage,
+            ),
           ],
           const SizedBox(height: 10),
           Material(
@@ -1369,21 +2218,40 @@ class ReminderDetailScreen extends StatelessWidget {
             child: SwitchListTile.adaptive(
               value: reminder.enabled,
               onChanged: onToggleEnabled,
-              secondary: Icon(reminder.enabled ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded),
-              title: const Text('Enabled', style: TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Text(reminder.enabled ? 'This reminder can fire' : 'Paused reminders stay saved but do not fire'),
+              secondary: Icon(
+                reminder.enabled
+                    ? Icons.play_circle_outline_rounded
+                    : Icons.pause_circle_outline_rounded,
+              ),
+              title: const Text(
+                'Enabled',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                reminder.enabled
+                    ? 'This reminder can fire'
+                    : 'Paused reminders stay saved but do not fire',
+              ),
             ),
           ),
           const SizedBox(height: 28),
           if (reminder.type == ReminderType.meeting)
             FilledButton.icon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Meeting links will be connected with Google Calendar setup.'))),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Meeting links will be connected with Google Calendar setup.',
+                  ),
+                ),
+              ),
               icon: const Icon(Icons.videocam_rounded),
               label: const Text('Join meeting'),
             )
           else
             FilledButton.tonalIcon(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Snoozed for 10 minutes.'))),
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Snoozed for 10 minutes.')),
+              ),
               icon: const Icon(Icons.snooze_rounded),
               label: const Text('Snooze 10 min'),
             ),
@@ -1399,8 +2267,14 @@ class ReminderDetailScreen extends StatelessWidget {
         title: const Text('Delete reminder?'),
         content: Text('${reminder.title} will be removed from Speaking Clock.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton.tonal(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -1418,8 +2292,18 @@ class _DetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(18)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: _sectionLabel(context)), const SizedBox(height: 6), Text(value, style: Theme.of(context).textTheme.bodyLarge)]),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: _sectionLabel(context)),
+          const SizedBox(height: 6),
+          Text(value, style: Theme.of(context).textTheme.bodyLarge),
+        ],
+      ),
     );
   }
 }
@@ -1449,12 +2333,21 @@ class _SchedulePreview extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(isTomorrow ? Icons.info_outline_rounded : Icons.check_circle_outline_rounded, size: 18, color: isTomorrow ? AppColors.amber : AppColors.sage),
+          Icon(
+            isTomorrow
+                ? Icons.info_outline_rounded
+                : Icons.check_circle_outline_rounded,
+            size: 18,
+            color: isTomorrow ? AppColors.amber : AppColors.sage,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: isTomorrow ? AppColors.amber : AppColors.sage, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                color: isTomorrow ? AppColors.amber : AppColors.sage,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -1464,10 +2357,16 @@ class _SchedulePreview extends StatelessWidget {
 }
 
 class ReminderEditor extends StatefulWidget {
-  const ReminderEditor({super.key, required this.initialType, this.reminder});
+  const ReminderEditor({
+    super.key,
+    required this.initialType,
+    this.reminder,
+    this.draft,
+  });
 
   final ReminderType initialType;
   final Reminder? reminder;
+  final ReminderDraft? draft;
 
   @override
   State<ReminderEditor> createState() => _ReminderEditorState();
@@ -1477,7 +2376,12 @@ class _ReminderEditorState extends State<ReminderEditor> {
   final _controller = TextEditingController();
   final _spokenController = TextEditingController();
   final _customRepeatController = TextEditingController(text: '30');
-  static const _repeatOptions = ['Once', 'Every day', 'Weekdays', 'Custom minutes'];
+  static const _repeatOptions = [
+    'Once',
+    'Every day',
+    'Weekdays',
+    'Custom minutes',
+  ];
   late ReminderType _type;
   late DeliveryMode _deliveryMode;
   late ToneOption _tone;
@@ -1495,6 +2399,13 @@ class _ReminderEditorState extends State<ReminderEditor> {
     return minutes == null ? 30 : minutes.clamp(1, 1440);
   }
 
+  bool get _canSave => _controller.text.trim().isNotEmpty;
+
+  String get _fallbackSpokenMessage {
+    final title = _controller.text.trim();
+    return 'It is time for ${title.isEmpty ? 'this reminder' : title}.';
+  }
+
   DateTime get _selectedTriggerAt {
     return _triggerForTime(_time);
   }
@@ -1503,23 +2414,35 @@ class _ReminderEditorState extends State<ReminderEditor> {
   void initState() {
     super.initState();
     final reminder = widget.reminder;
-    _type = reminder?.type ?? widget.initialType;
-    _deliveryMode = reminder?.deliveryMode ?? DeliveryMode.gentle;
-    _tone = reminder?.tone ?? ToneOption.softChime;
+    final draft = widget.draft;
+    _type = reminder?.type ?? draft?.type ?? widget.initialType;
+    _deliveryMode =
+        reminder?.deliveryMode ?? draft?.deliveryMode ?? DeliveryMode.gentle;
+    _tone = reminder?.tone ?? draft?.tone ?? ToneOption.softChime;
     _time = _defaultReminderTime();
-    _snoozeMinutes = reminder?.snoozeMinutes ?? 10;
+    _snoozeMinutes = reminder?.snoozeMinutes ?? draft?.snoozeMinutes ?? 10;
+    if (draft != null && reminder == null) {
+      _controller.text = draft.title;
+      _spokenController.text = draft.spokenMessage;
+      _applyRepeatRule(draft.repeatRule);
+    }
     if (reminder != null) {
       _controller.text = reminder.title;
       _spokenController.text = reminder.spokenMessage;
-      final savedRepeat = reminder.detail.split(' · ').first;
-      final customMinutes = _customRepeatMinutesFromRule(savedRepeat);
-      if (customMinutes != null) {
-        _frequency = 'Custom minutes';
-        _customRepeatController.text = '$customMinutes';
-      } else {
-        _frequency = _repeatOptions.contains(savedRepeat) ? savedRepeat : 'Every day';
-      }
+      _applyRepeatRule(reminder.detail.split(' · ').first);
       _time = _parseTimeLabel(reminder.time) ?? _time;
+    }
+  }
+
+  void _applyRepeatRule(String repeatRule) {
+    final customMinutes = _customRepeatMinutesFromRule(repeatRule);
+    if (customMinutes != null) {
+      _frequency = 'Custom minutes';
+      _customRepeatController.text = '$customMinutes';
+    } else {
+      _frequency = _repeatOptions.contains(repeatRule)
+          ? repeatRule
+          : 'Every day';
     }
   }
 
@@ -1536,14 +2459,18 @@ class _ReminderEditorState extends State<ReminderEditor> {
       context: context,
       initialTime: _time,
       builder: (context, child) {
-        return MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false), child: child ?? const SizedBox.shrink());
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child ?? const SizedBox.shrink(),
+        );
       },
     );
     if (picked != null) setState(() => _time = picked);
   }
 
   void _save() {
-    final title = _controller.text.trim().isEmpty ? 'Drink water' : _controller.text.trim();
+    if (!_canSave) return;
+    final title = _controller.text.trim();
     final now = DateTime.now();
     final triggerAt = _selectedTriggerAt;
     final reminder = widget.reminder;
@@ -1563,7 +2490,8 @@ class _ReminderEditorState extends State<ReminderEditor> {
         enabled: reminder?.enabled ?? true,
         snoozeMinutes: _snoozeMinutes,
         triggerAtMillis: triggerAt.millisecondsSinceEpoch,
-        createdAtMillis: reminder?.createdAtMillis ?? now.millisecondsSinceEpoch,
+        createdAtMillis:
+            reminder?.createdAtMillis ?? now.millisecondsSinceEpoch,
         updatedAtMillis: now.millisecondsSinceEpoch,
       ),
     );
@@ -1571,22 +2499,72 @@ class _ReminderEditorState extends State<ReminderEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final editing = widget.reminder != null;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return SafeArea(
       top: false,
       child: Container(
-        padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.viewInsetsOf(context).bottom + 22),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, bottomInset + 18),
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Container(height: 4, width: 40, decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(10)))),
-              const SizedBox(height: 22),
+              Center(
+                child: Container(
+                  height: 4,
+                  width: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.line,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.reminder == null ? 'New reminder' : 'Edit reminder', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Container(
+                    height: 46,
+                    width: 46,
+                    decoration: BoxDecoration(
+                      color: AppColors.sageLight,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.add_alarm_rounded,
+                      color: AppColors.sage,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          editing ? 'Edit reminder' : 'Create reminder',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Choose how Speaking Clock should get your attention.',
+                          style: _subtle(context),
+                        ),
+                      ],
+                    ),
+                  ),
                   IconButton(
                     tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
@@ -1594,80 +2572,259 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              TextField(controller: _controller, autofocus: true, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'What should we remind you?', hintText: 'Drink water', border: OutlineInputBorder())),
-              const SizedBox(height: 18),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ReminderType.values.map((type) => ChoiceChip(label: Text(_label(type)), selected: type == _type, onSelected: (_) => setState(() => _type = type))).toList(),
-              ),
-              const SizedBox(height: 18),
-              Text('Delivery', style: _sectionLabel(context)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: DeliveryMode.values
-                    .map((mode) => ChoiceChip(
-                          label: Text(_deliveryLabel(mode)),
-                          selected: mode == _deliveryMode,
-                          onSelected: (_) => setState(() => _deliveryMode = mode),
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 18),
-              Row(children: [
-                Expanded(child: OutlinedButton.icon(onPressed: _pickTime, icon: const Icon(Icons.schedule_outlined), label: Text(_formatTime12(_time)))),
-                const SizedBox(width: 10),
-                Expanded(child: DropdownButtonFormField<String>(initialValue: _frequency, decoration: const InputDecoration(labelText: 'Repeat', border: OutlineInputBorder()), items: _repeatOptions.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(), onChanged: (value) => setState(() => _frequency = value ?? _frequency))),
-              ]),
-              if (_frequency == 'Custom minutes') ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _customRepeatController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Repeat every',
-                    suffixText: 'minutes',
-                    helperText: 'Example: 25 means this reminder repeats every 25 minutes.',
-                    border: OutlineInputBorder(),
-                  ),
+              const SizedBox(height: 20),
+              _EditorCard(
+                title: 'What should I remind you about?',
+                icon: Icons.edit_note_rounded,
+                child: TextField(
+                  controller: _controller,
+                  autofocus: !editing,
                   onChanged: (_) => setState(() {}),
-                ),
-              ],
-              const SizedBox(height: 8),
-              _SchedulePreview(triggerAt: _selectedTriggerAt, customRepeatMinutes: _frequency == 'Custom minutes' ? _customRepeatMinutes : null),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<ToneOption>(
-                initialValue: _tone,
-                decoration: const InputDecoration(labelText: 'Tone', border: OutlineInputBorder()),
-                items: ToneOption.values.map((tone) => DropdownMenuItem(value: tone, child: Text(_toneLabel(tone)))).toList(),
-                onChanged: (value) => setState(() => _tone = value ?? _tone),
-              ),
-              if (_deliveryMode == DeliveryMode.speaking) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _spokenController,
-                  minLines: 2,
-                  maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    labelText: 'What should it speak?',
-                    hintText: 'It is time for ${_controller.text.trim().isEmpty ? 'this reminder' : _controller.text.trim()}',
-                    border: const OutlineInputBorder(),
+                    hintText: 'Drink water',
+                    errorText: _controller.text.isEmpty
+                        ? null
+                        : _canSave
+                        ? null
+                        : 'Add a title before saving.',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: 'Reminder category',
+                icon: Icons.category_outlined,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ReminderType.values
+                      .map(
+                        (type) => ChoiceChip(
+                          label: Text(_label(type)),
+                          selected: type == _type,
+                          onSelected: (_) => setState(() => _type = type),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: 'First reminder',
+                icon: Icons.schedule_rounded,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OutlinedButton(
+                      onPressed: _pickTime,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(72),
+                        alignment: Alignment.centerLeft,
+                        side: const BorderSide(color: AppColors.line),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.sageLight,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.access_time_rounded,
+                              color: AppColors.sage,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              _formatTime12(_time),
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.ink,
+                                  ),
+                            ),
+                          ),
+                          const Icon(Icons.keyboard_arrow_down_rounded),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _SchedulePreview(
+                      triggerAt: _selectedTriggerAt,
+                      customRepeatMinutes: _frequency == 'Custom minutes'
+                          ? _customRepeatMinutes
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: 'Repeat',
+                icon: Icons.repeat_rounded,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _repeatOptions
+                          .map(
+                            (option) => ChoiceChip(
+                              label: Text(option),
+                              selected: option == _frequency,
+                              onSelected: (_) =>
+                                  setState(() => _frequency = option),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    if (_frequency == 'Custom minutes') ...[
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _customRepeatController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Repeat every',
+                          suffixText: 'minutes',
+                          helperText:
+                              'First fire stays at ${_formatTime12(_time)}, then repeats every $_customRepeatMinutes min.',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: 'How should it remind you?',
+                icon: Icons.notifications_active_outlined,
+                child: Column(
+                  children: DeliveryMode.values
+                      .map(
+                        (mode) => Padding(
+                          padding: EdgeInsets.only(
+                            bottom: mode == DeliveryMode.values.last ? 0 : 10,
+                          ),
+                          child: _DeliveryModeCard(
+                            mode: mode,
+                            selected: _deliveryMode == mode,
+                            onTap: () => setState(() => _deliveryMode = mode),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              if (_deliveryMode == DeliveryMode.speaking) ...[
+                const SizedBox(height: 14),
+                _EditorCard(
+                  title: 'What should it say?',
+                  icon: Icons.record_voice_over_outlined,
+                  child: TextField(
+                    controller: _spokenController,
+                    minLines: 2,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: 'Drink water now.',
+                      helperText:
+                          'If left empty, it will say: "$_fallbackSpokenMessage"',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: _snoozeMinutes,
-                decoration: const InputDecoration(labelText: 'Snooze', border: OutlineInputBorder()),
-                items: const [5, 10, 15, 30].map((value) => DropdownMenuItem(value: value, child: Text('$value minutes'))).toList(),
-                onChanged: (value) => setState(() => _snoozeMinutes = value ?? _snoozeMinutes),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: 'Tone',
+                icon: Icons.music_note_rounded,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ToneOption.values
+                      .map(
+                        (tone) => ChoiceChip(
+                          avatar: Icon(_toneIcon(tone), size: 18),
+                          label: Text(_toneLabel(tone)),
+                          selected: tone == _tone,
+                          onSelected: (_) => setState(() => _tone = tone),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _EditorCard(
+                title: _deliveryMode == DeliveryMode.gentle
+                    ? 'Remind again after'
+                    : 'Snooze',
+                icon: _deliveryMode == DeliveryMode.gentle
+                    ? Icons.more_time_rounded
+                    : Icons.snooze_rounded,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _deliveryMode == DeliveryMode.gentle
+                          ? 'Used when you tap “Remind again” on the gentle notification.'
+                          : 'Used when you snooze the full-screen alarm or alarm notification.',
+                      style: _subtle(context),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [2, 5, 10, 15, 30]
+                          .map(
+                            (value) => ChoiceChip(
+                              label: Text('$value min'),
+                              selected: value == _snoozeMinutes,
+                              onSelected: (_) =>
+                                  setState(() => _snoozeMinutes = value),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 18),
-              SizedBox(width: double.infinity, child: FilledButton(onPressed: _save, child: Text(widget.reminder == null ? 'Save reminder' : 'Save changes'))),
+              if (!_canSave)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Add a reminder title before saving.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _canSave ? _save : null,
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text(editing ? 'Save changes' : 'Save reminder'),
+                ),
+              ),
             ],
           ),
         ),
@@ -1676,31 +2833,245 @@ class _ReminderEditorState extends State<ReminderEditor> {
   }
 }
 
-TextStyle _sectionLabel(BuildContext context) => Theme.of(context).textTheme.labelMedium!.copyWith(letterSpacing: 1.2, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.onSurfaceVariant);
-TextStyle _subtle(BuildContext context, {bool small = false}) => (small ? Theme.of(context).textTheme.bodySmall : Theme.of(context).textTheme.bodyMedium)!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
+class _EditorCard extends StatelessWidget {
+  const _EditorCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.sageLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: AppColors.sage, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliveryModeCard extends StatelessWidget {
+  const _DeliveryModeCard({
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final DeliveryMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (mode) {
+      DeliveryMode.gentle => Icons.notifications_none_rounded,
+      DeliveryMode.alarm => Icons.alarm_rounded,
+      DeliveryMode.speaking => Icons.record_voice_over_rounded,
+    };
+    final description = switch (mode) {
+      DeliveryMode.gentle => 'A light notification for low-urgency nudges.',
+      DeliveryMode.alarm => 'Rings until you acknowledge it.',
+      DeliveryMode.speaking =>
+        'Speaks your message, then rings until acknowledged.',
+    };
+    final badges = switch (mode) {
+      DeliveryMode.gentle => const ['Light', 'Notification'],
+      DeliveryMode.alarm => const ['Full-screen', 'Acknowledge'],
+      DeliveryMode.speaking => const ['Speaks', 'Full-screen'],
+    };
+    final accent = switch (mode) {
+      DeliveryMode.gentle => const Color(0xff7aa0a8),
+      DeliveryMode.alarm => AppColors.sage,
+      DeliveryMode.speaking => AppColors.amber,
+    };
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? accent.withValues(alpha: 0.11) : AppColors.canvas,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? accent : AppColors.line,
+            width: selected ? 1.4 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: accent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _deliveryLabel(mode),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.ink,
+                              ),
+                        ),
+                      ),
+                      if (selected)
+                        Icon(
+                          Icons.check_circle_rounded,
+                          color: accent,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(description, style: _subtle(context)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: badges
+                        .map(
+                          (badge) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                color: accent,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+TextStyle _sectionLabel(BuildContext context) =>
+    Theme.of(context).textTheme.labelMedium!.copyWith(
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w800,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+TextStyle _subtle(BuildContext context, {bool small = false}) =>
+    (small
+            ? Theme.of(context).textTheme.bodySmall
+            : Theme.of(context).textTheme.bodyMedium)!
+        .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
 
 String _label(ReminderType type) => switch (type) {
-      ReminderType.water => 'Water',
-      ReminderType.breakTime => 'Break',
-      ReminderType.meeting => 'Meeting',
-      ReminderType.medication => 'Medication',
-      ReminderType.custom => 'Custom',
-    };
+  ReminderType.water => 'Water',
+  ReminderType.breakTime => 'Break',
+  ReminderType.meeting => 'Meeting',
+  ReminderType.medication => 'Medication',
+  ReminderType.custom => 'Custom',
+};
 
 String _deliveryLabel(DeliveryMode mode) => switch (mode) {
-      DeliveryMode.gentle => 'Gentle Reminder',
-      DeliveryMode.alarm => 'Alarm Reminder',
-      DeliveryMode.speaking => 'Speaking Alarm',
-    };
+  DeliveryMode.gentle => 'Gentle Reminder',
+  DeliveryMode.alarm => 'Alarm Reminder',
+  DeliveryMode.speaking => 'Speaking Alarm',
+};
+
+String _deliveryShortLabel(DeliveryMode mode) => switch (mode) {
+  DeliveryMode.gentle => 'Gentle',
+  DeliveryMode.alarm => 'Alarm',
+  DeliveryMode.speaking => 'Speaking',
+};
+
+IconData _deliveryIcon(DeliveryMode mode) => switch (mode) {
+  DeliveryMode.gentle => Icons.notifications_none_rounded,
+  DeliveryMode.alarm => Icons.alarm_rounded,
+  DeliveryMode.speaking => Icons.record_voice_over_rounded,
+};
+
+Color _deliveryAccent(DeliveryMode mode) => switch (mode) {
+  DeliveryMode.gentle => const Color(0xff7aa0a8),
+  DeliveryMode.alarm => AppColors.sage,
+  DeliveryMode.speaking => AppColors.amber,
+};
 
 String _toneLabel(ToneOption tone) => switch (tone) {
-      ToneOption.softChime => 'Soft Chime',
-      ToneOption.classicAlarm => 'Classic Alarm',
-      ToneOption.digitalBeep => 'Digital Beep',
-      ToneOption.morningBell => 'Morning Bell',
-      ToneOption.calmWater => 'Calm Water',
-      ToneOption.vibrationOnly => 'Vibration Only',
-    };
+  ToneOption.softChime => 'Soft Chime',
+  ToneOption.classicAlarm => 'Classic Alarm',
+  ToneOption.digitalBeep => 'Digital Beep',
+  ToneOption.morningBell => 'Morning Bell',
+  ToneOption.calmWater => 'Calm Water',
+  ToneOption.vibrationOnly => 'Vibration Only',
+};
+
+IconData _toneIcon(ToneOption tone) => switch (tone) {
+  ToneOption.softChime => Icons.notifications_none_rounded,
+  ToneOption.classicAlarm => Icons.alarm_rounded,
+  ToneOption.digitalBeep => Icons.graphic_eq_rounded,
+  ToneOption.morningBell => Icons.wb_sunny_outlined,
+  ToneOption.calmWater => Icons.water_drop_outlined,
+  ToneOption.vibrationOnly => Icons.vibration_rounded,
+};
 
 T _enumValue<T>(List<T> values, int index, T fallback) {
   if (index < 0 || index >= values.length) return fallback;
@@ -1736,6 +3107,13 @@ String _repeatRule(Reminder reminder) {
   return reminder.detail.split(' · ').first;
 }
 
+String _greeting() {
+  final hour = DateTime.now().hour;
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 String _scheduleBlockedMessage(Reminder reminder, AlarmReadiness readiness) {
   if (!readiness.notificationsEnabled) {
     return 'Reminder saved, but notifications are off. Allow notifications before it can fire.';
@@ -1750,19 +3128,58 @@ String _scheduleBlockedMessage(Reminder reminder, AlarmReadiness readiness) {
 }
 
 String _friendlyDate(DateTime date) {
-  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const weekdays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
   return '${weekdays[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
 }
 
 List<String> _readinessWarnings(AlarmReadiness? readiness) {
   if (readiness == null) return const [];
   final warnings = <String>[];
-  if (!readiness.notificationsEnabled) warnings.add('Notifications are off, so reminders may not appear.');
-  if (!readiness.exactAlarmEnabled) warnings.add('Exact alarms are off, so important alarms may not fire on time.');
-  if (!readiness.fullScreenIntentEnabled) warnings.add('Full-screen alarms are off, so lock-screen alarm screens may not appear.');
-  if (!readiness.alarmVolumeEnabled) warnings.add('Alarm volume is muted or too low, so speech and alarm sound may not be audible.');
-  if (!readiness.dndPolicyAccess) warnings.add('Reliable alarms cannot interrupt DND. Android alarms may still fire, but allow this for the safest DND behavior.');
+  if (!readiness.notificationsEnabled) {
+    warnings.add('Notifications are off, so reminders may not appear.');
+  }
+  if (!readiness.exactAlarmEnabled) {
+    warnings.add(
+      'Exact alarms are off, so important alarms may not fire on time.',
+    );
+  }
+  if (!readiness.fullScreenIntentEnabled) {
+    warnings.add(
+      'Full-screen alarms are off, so lock-screen alarm screens may not appear.',
+    );
+  }
+  if (!readiness.alarmVolumeEnabled) {
+    warnings.add(
+      'Alarm volume is muted or too low, so speech and alarm sound may not be audible.',
+    );
+  }
+  if (!readiness.dndPolicyAccess) {
+    warnings.add(
+      'Reliable alarms cannot interrupt DND. Android alarms may still fire, but allow this for the safest DND behavior.',
+    );
+  }
   return warnings;
 }
 
@@ -1773,8 +3190,16 @@ TimeOfDay _defaultReminderTime() {
 
 DateTime _triggerForTime(TimeOfDay time) {
   final now = DateTime.now();
-  var triggerAt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-  if (!triggerAt.isAfter(now)) triggerAt = triggerAt.add(const Duration(days: 1));
+  var triggerAt = DateTime(
+    now.year,
+    now.month,
+    now.day,
+    time.hour,
+    time.minute,
+  );
+  if (!triggerAt.isAfter(now)) {
+    triggerAt = triggerAt.add(const Duration(days: 1));
+  }
   return triggerAt;
 }
 
@@ -1786,7 +3211,10 @@ String _formatTime12(TimeOfDay time) {
 }
 
 int? _customRepeatMinutesFromRule(String rule) {
-  final match = RegExp(r'^Every\s+(\d+)\s+min$', caseSensitive: false).firstMatch(rule.trim());
+  final match = RegExp(
+    r'^Every\s+(\d+)\s+min$',
+    caseSensitive: false,
+  ).firstMatch(rule.trim());
   if (match == null) return null;
   final minutes = int.tryParse(match.group(1) ?? '');
   if (minutes == null || minutes <= 0) return null;
@@ -1795,7 +3223,9 @@ int? _customRepeatMinutesFromRule(String rule) {
 
 TimeOfDay? _parseTimeLabel(String value) {
   final normalized = value.trim().toUpperCase();
-  final match = RegExp(r'^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$').firstMatch(normalized);
+  final match = RegExp(
+    r'^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$',
+  ).firstMatch(normalized);
   if (match == null) return null;
   var hour = int.tryParse(match.group(1) ?? '');
   final minute = int.tryParse(match.group(2) ?? '');

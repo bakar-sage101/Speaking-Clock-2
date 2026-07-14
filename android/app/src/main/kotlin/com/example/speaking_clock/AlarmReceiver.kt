@@ -4,10 +4,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
+import java.util.concurrent.TimeUnit
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != actionFireAlarm) return
         val title = intent.getStringExtra(extraTitle) ?: "Reminder"
         val id = intent.getIntExtra(extraId, 0)
         val alarmStyle = intent.getBooleanExtra(extraAlarmStyle, false)
@@ -16,12 +17,26 @@ class AlarmReceiver : BroadcastReceiver() {
         val toneId = intent.getStringExtra(extraToneId) ?: "softChime"
         val snoozeMinutes = intent.getIntExtra(extraSnoozeMinutes, 10)
         val repeatRule = intent.getStringExtra(extraRepeatRule) ?: "Once"
+        when (intent.action) {
+            actionGentleDone -> {
+                NotificationManagerCompat.from(context).cancel(id)
+                return
+            }
+            actionGentleSnooze -> {
+                NotificationManagerCompat.from(context).cancel(id)
+                val triggerAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(snoozeMinutes.toLong())
+                AlarmScheduler.schedule(context, id, triggerAt, title, false, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule)
+                return
+            }
+            actionFireAlarm -> Unit
+            else -> return
+        }
         val triggerAtMillis = intent.getLongExtra(extraTriggerAtMillis, System.currentTimeMillis())
         ScheduledAlarmStore.nextTriggerAfter(triggerAtMillis, repeatRule)?.let { nextTrigger ->
             AlarmScheduler.schedule(context, id, nextTrigger, title, alarmStyle, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule)
         } ?: ScheduledAlarmStore.remove(context, id)
         if (!alarmStyle) {
-            AlarmNotificationHelper.showGentleReminder(context, id, title)
+            AlarmNotificationHelper.showGentleReminder(context, id, title, snoozeMinutes, repeatRule, toneId)
             return
         }
         val serviceIntent = Intent(context, AlarmPlaybackService::class.java).apply {
@@ -31,6 +46,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(extraSpokenMessage, spokenMessage)
             putExtra(extraToneId, toneId)
             putExtra(extraSnoozeMinutes, snoozeMinutes)
+            putExtra(extraRepeatRule, repeatRule)
         }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)
@@ -51,6 +67,8 @@ class AlarmReceiver : BroadcastReceiver() {
 
     companion object {
         const val actionFireAlarm = "com.example.speaking_clock.FIRE_ALARM"
+        const val actionGentleDone = "com.example.speaking_clock.GENTLE_DONE"
+        const val actionGentleSnooze = "com.example.speaking_clock.GENTLE_SNOOZE"
         const val extraTitle = "title"
         const val extraId = "id"
         const val extraAlarmStyle = "alarm_style"

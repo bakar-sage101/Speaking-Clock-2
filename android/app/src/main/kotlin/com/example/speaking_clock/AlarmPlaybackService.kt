@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import java.util.concurrent.TimeUnit
 
 class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
     private var textToSpeech: TextToSpeech? = null
@@ -22,11 +23,16 @@ class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
     private var toneId = "softChime"
     private var id = 0
     private var snoozeMinutes = 10
+    private var repeatRule = "Once"
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == actionStop) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+            return START_NOT_STICKY
+        }
+        if (intent?.action == actionSnooze) {
+            handleSnooze(intent)
             return START_NOT_STICKY
         }
         stopPlayback()
@@ -36,7 +42,8 @@ class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
         spokenMessage = intent?.getStringExtra(AlarmReceiver.extraSpokenMessage).orEmpty()
         toneId = intent?.getStringExtra(AlarmReceiver.extraToneId) ?: "softChime"
         snoozeMinutes = intent?.getIntExtra(AlarmReceiver.extraSnoozeMinutes, 10) ?: 10
-        startForeground(notificationId, AlarmNotificationHelper.createReliableNotification(this, id, title, spoken, spokenMessage, toneId, snoozeMinutes))
+        repeatRule = intent?.getStringExtra(AlarmReceiver.extraRepeatRule) ?: "Once"
+        startForeground(notificationId, AlarmNotificationHelper.createReliableNotification(this, id, title, spoken, spokenMessage, toneId, snoozeMinutes, repeatRule))
         if (spoken) {
             textToSpeech = TextToSpeech(this, this)
         } else {
@@ -110,6 +117,21 @@ class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
         textToSpeech = null
     }
 
+    private fun handleSnooze(intent: Intent) {
+        val snoozeId = intent.getIntExtra(AlarmReceiver.extraId, id)
+        val snoozeTitle = intent.getStringExtra(AlarmReceiver.extraTitle) ?: title
+        val snoozeSpoken = intent.getBooleanExtra(AlarmReceiver.extraSpoken, spoken)
+        val snoozeSpokenMessage = intent.getStringExtra(AlarmReceiver.extraSpokenMessage) ?: spokenMessage
+        val snoozeToneId = intent.getStringExtra(AlarmReceiver.extraToneId) ?: toneId
+        val snoozeDurationMinutes = intent.getIntExtra(AlarmReceiver.extraSnoozeMinutes, snoozeMinutes)
+        val snoozeRepeatRule = intent.getStringExtra(AlarmReceiver.extraRepeatRule) ?: repeatRule
+        stopPlayback()
+        val triggerAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(snoozeDurationMinutes.toLong())
+        AlarmScheduler.schedule(this, snoozeId, triggerAt, snoozeTitle, true, snoozeSpoken, snoozeSpokenMessage, snoozeToneId, snoozeDurationMinutes, snoozeRepeatRule)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     private fun toneUriFor(toneId: String): Uri {
         val type = when (toneId) {
             "softChime", "calmWater" -> RingtoneManager.TYPE_NOTIFICATION
@@ -121,6 +143,7 @@ class AlarmPlaybackService : Service(), TextToSpeech.OnInitListener {
 
     companion object {
         const val actionStop = "com.example.speaking_clock.STOP_ALARM"
+        const val actionSnooze = "com.example.speaking_clock.SNOOZE_ALARM"
         private const val notificationId = 2101
         private const val speechToAlarmGapMillis = 2000L
     }

@@ -36,13 +36,28 @@ object AlarmNotificationHelper {
         )
     }
 
-    fun createReliableNotification(context: Context, id: Int, title: String, spoken: Boolean, spokenMessage: String, toneId: String, snoozeMinutes: Int): Notification {
+    fun createReliableNotification(context: Context, id: Int, title: String, spoken: Boolean, spokenMessage: String, toneId: String, snoozeMinutes: Int, repeatRule: String): Notification {
         ensureChannels(context)
         val acknowledgeIntent = PendingIntent.getService(
             context,
-            4101,
+            id * 10 + 1,
             Intent(context, AlarmPlaybackService::class.java).apply {
                 action = AlarmPlaybackService.actionStop
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val snoozeIntent = PendingIntent.getService(
+            context,
+            id * 10 + 2,
+            Intent(context, AlarmPlaybackService::class.java).apply {
+                action = AlarmPlaybackService.actionSnooze
+                putExtra(AlarmReceiver.extraId, id)
+                putExtra(AlarmReceiver.extraTitle, title)
+                putExtra(AlarmReceiver.extraSpoken, spoken)
+                putExtra(AlarmReceiver.extraSpokenMessage, spokenMessage)
+                putExtra(AlarmReceiver.extraToneId, toneId)
+                putExtra(AlarmReceiver.extraSnoozeMinutes, snoozeMinutes)
+                putExtra(AlarmReceiver.extraRepeatRule, repeatRule)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -66,11 +81,37 @@ object AlarmNotificationHelper {
             .setOngoing(true)
             .setFullScreenIntent(fullScreenIntent, true)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Acknowledge", acknowledgeIntent)
+            .addAction(android.R.drawable.ic_menu_recent_history, "Snooze $snoozeMinutes min", snoozeIntent)
             .build()
     }
 
-    fun showGentleReminder(context: Context, id: Int, title: String) {
+    fun showGentleReminder(context: Context, id: Int, title: String, snoozeMinutes: Int, repeatRule: String, toneId: String) {
         ensureChannels(context)
+        val doneIntent = PendingIntent.getBroadcast(
+            context,
+            id * 10 + 3,
+            Intent(context, AlarmReceiver::class.java).apply {
+                action = AlarmReceiver.actionGentleDone
+                putExtra(AlarmReceiver.extraId, id)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val remindAgainIntent = PendingIntent.getBroadcast(
+            context,
+            id * 10 + 4,
+            Intent(context, AlarmReceiver::class.java).apply {
+                action = AlarmReceiver.actionGentleSnooze
+                putExtra(AlarmReceiver.extraId, id)
+                putExtra(AlarmReceiver.extraTitle, title)
+                putExtra(AlarmReceiver.extraAlarmStyle, false)
+                putExtra(AlarmReceiver.extraSpoken, false)
+                putExtra(AlarmReceiver.extraSpokenMessage, "")
+                putExtra(AlarmReceiver.extraToneId, toneId)
+                putExtra(AlarmReceiver.extraSnoozeMinutes, snoozeMinutes)
+                putExtra(AlarmReceiver.extraRepeatRule, repeatRule)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val notification = NotificationCompat.Builder(context, gentleChannelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
@@ -78,6 +119,8 @@ object AlarmNotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Done", doneIntent)
+            .addAction(android.R.drawable.ic_menu_recent_history, "Remind in $snoozeMinutes min", remindAgainIntent)
             .build()
         NotificationManagerCompat.from(context).notify(id, notification)
     }

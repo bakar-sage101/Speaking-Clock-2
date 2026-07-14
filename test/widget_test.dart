@@ -6,7 +6,7 @@ void main() {
     await tester.pumpWidget(const SpeakingClockApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Good morning'), findsOneWidget);
+    expect(find.text('Next up'), findsOneWidget);
     expect(find.text('Drink water'), findsOneWidget);
     expect(find.text('Add reminder'), findsOneWidget);
   });
@@ -17,7 +17,7 @@ void main() {
 
     await tester.tap(find.text('Add reminder'));
     await tester.pumpAndSettle();
-    expect(find.text('New reminder'), findsOneWidget);
+    expect(find.text('Create reminder'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
@@ -25,7 +25,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Eye break'));
     await tester.pumpAndSettle();
-    expect(find.text('New reminder'), findsOneWidget);
+    expect(find.text('Create reminder'), findsOneWidget);
     expect(find.text('Break'), findsOneWidget);
   });
 }

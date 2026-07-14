@@ -63,6 +63,118 @@ Latest verified Pixel 8 behavior:
 - Long-running repeat soak test was user-tested and passed.
 - Notification-permission revoked flow was user-tested and passed.
 
+## Recent progress log
+
+This section captures the latest completed product and UX work after the Android reliability foundation became stable.
+
+### Phase 3A — Add Reminder and mode selection polish
+
+Completed:
+
+- Rebuilt the Add Reminder flow as a calmer card-based sheet.
+- Replaced the delivery-mode dropdown/chips with three clear behavior cards:
+  - Gentle Reminder
+  - Alarm Reminder
+  - Speaking Alarm
+- Made title, category, first reminder time, repeat, delivery mode, tone, and spoken message feel more guided.
+- Added a clearer custom-minute explanation: first fire stays at the selected time, then repeats every X minutes.
+- Made the spoken-message field appear only for Speaking Alarm.
+- Changed tone selection into built-in tone chips.
+- Added save validation so a reminder needs a title before saving.
+
+### Phase 3B — Gentle Reminder behavior
+
+Completed:
+
+- Added Done and Remind again actions to Gentle Reminder notifications.
+- Made Remind again act as a lightweight gentle snooze rather than a full-screen alarm snooze.
+- Added per-reminder “Remind again after” options:
+  - 2 min
+  - 5 min
+  - 10 min
+  - 15 min
+  - 30 min
+- Updated the Gentle notification action label to show the chosen duration, such as `Remind in 2 min`.
+- Added `2 min` as a snooze option for Alarm Reminder and Speaking Alarm too.
+
+### Alarm Reminder / Speaking Alarm notification actions
+
+Completed:
+
+- Added Snooze to the heads-up notification shown while another app is in use.
+- The heads-up notification now supports:
+  - Acknowledge
+  - Snooze X min
+- Snooze from notification stops current playback and reschedules the same alarm with its title, tone, spoken message, and repeat rule.
+- User-tested on Pixel 8 and confirmed working.
+
+### Phase 3C — Today screen polish
+
+Completed:
+
+- Reworked the Today header into a calm card with dynamic greeting.
+- Moved reliability warnings higher on the Today screen.
+- Added a direct Review setup action for reliability warnings.
+- Reworked the Next Up card with:
+  - delivery-mode badge
+  - repeat badge
+  - tone badge
+  - Speaking badge when relevant
+  - paused state
+  - Open reminder action
+- Removed the fake Today-screen snooze snackbar action.
+- Improved Later Today rows with clearer title/time hierarchy, delivery badges, repeat badges, and disabled styling.
+- Improved empty state with friendlier copy and quick examples.
+
+### Phase 3D — Routines/templates polish
+
+Completed:
+
+- Reworked Routines into a polished template-driven page.
+- Added six quick-start templates:
+  - Drink water
+  - Stand and stretch
+  - Eye break
+  - Medication
+  - Meeting prep
+  - Deep work break
+- Templates now pre-fill Add Reminder with:
+  - title
+  - category
+  - reminder mode
+  - repeat rule
+  - tone
+  - spoken message where relevant
+  - snooze/remind-again duration
+- Added a cleaner Your routines section with empty state and count badge.
+
+### Phase 3E — Settings and onboarding polish
+
+Completed:
+
+- Reworked Settings into a control-center style page.
+- Added a polished Settings header card.
+- Added a Reliable Alarm readiness card showing Checking, Ready, or Needs attention.
+- Added Review setup action inside Settings.
+- Added sections for:
+  - Reliability
+  - Reminder behavior
+  - Integrations
+  - Preferences
+- Added Google Calendar and Microsoft Teams / Outlook placeholders for Phase 4.
+- Added a Troubleshooting/debug placeholder.
+- Cleaned up non-clickable placeholder rows so they no longer show navigation chevrons.
+- Polished onboarding copy to feel calmer and less technical.
+
+### Verification after recent work
+
+Completed after each meaningful change:
+
+- `flutter analyze`
+- `flutter test`
+- Android debug APK build
+- Pixel 8 install and launch when the device was connected
+
 ## Phase 1 — Android Reliable Alarm Foundation
 
 Status: complete for Android foundation; reliability hardening has begun and several items are already verified on Pixel 8.
@@ -254,29 +366,34 @@ Build sequence:
    - Make AM/PM and Today/Tomorrow preview clearer.
    - Make custom-minute repeat easier to understand.
    - Add better validation messages before saving.
+   - Status: implemented in Phase 3A as a card-based Add Reminder flow.
 
 2. Reminder mode redesign
    - Gentle Reminder: light but useful.
    - Alarm Reminder: full-screen ringing until acknowledged.
    - Speaking Alarm: spoken text first, then ringing until acknowledged.
    - Add clearer descriptions and visual treatment for each mode.
+   - Status: implemented in Phase 3A with three selectable behavior cards.
 
 3. Gentle Reminder improvement
    - Improve notification behavior.
    - Add useful actions such as Done and Remind again.
    - Make it feel different from Alarm Reminder without being too weak.
    - Decide whether Gentle Reminder should support optional light snooze.
+   - Status: first pass implemented with Done and Remind again notification actions.
 
 4. Tone picker polish
    - Improve tone selection UI.
    - Show tone names more clearly.
    - Add preview/test behavior later if needed.
    - Keep built-in tones for now.
+   - Status: first pass implemented with built-in tone chips.
 
 5. Spoken message field polish
    - Make the custom spoken text field more prominent for Speaking Alarm.
    - Add examples such as “Drink water now” or “Meeting starts in 10 minutes.”
    - Make default spoken text clearer when the field is empty.
+   - Status: first pass implemented; field now appears only for Speaking Alarm.
 
 6. Today screen polish
    - Improve next-up card.
@@ -284,16 +401,19 @@ Build sequence:
    - Improve empty states.
    - Show clearer status for disabled reminders.
    - Improve next alarm time display after snooze/edit.
+   - Status: first pass implemented with polished header, readiness warning placement, richer Next Up card, improved reminder rows, and calmer empty state.
 
 7. Routines polish
    - Make quick-start routines actually useful.
    - Add templates like Drink water, Stretch, Eye break, Medication, Meeting prep.
    - Let templates pre-fill title, type, repeat, tone, and delivery mode.
+   - Status: first pass implemented with six richer routine templates and pre-filled Add Reminder drafts.
 
 8. Settings and onboarding polish
    - Make onboarding feel premium and less checklist-like.
    - Improve Reliable Alarm wording.
    - Add a simple help/debug section later for Android reliability state.
+   - Status: first pass implemented with Settings control-center layout, readiness card, integration placeholders, and calmer onboarding copy.
 
 9. Native full-screen alarm polish
    - Keep current working behavior stable.
