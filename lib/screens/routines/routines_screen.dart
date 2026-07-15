@@ -22,68 +22,38 @@ class RoutinesScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 108),
       children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: AppColors.softCardGradient,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.75)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.darkWine.withValues(alpha: 0.035),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
+        Text(
+          'Routines',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: AppColors.darkWine,
+            fontWeight: FontWeight.w900,
           ),
-          child: Row(
-            children: [
-              Container(
-                height: 52,
-                width: 52,
-                decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: AppColors.darkWine,
-                ),
+        ),
+        const SizedBox(height: 4),
+        Text('Use a template to get started.', style: _subtle(context)),
+        const SizedBox(height: 22),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.02,
+          children: [
+            for (final template in _routineTemplates.take(4))
+              RoutinePreset(
+                template: template,
+                onTap: () => onUseTemplate(template.draft),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Routines',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Quick-start reminders for a healthier workday.',
-                      style: _subtle(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        RoutinePreset(
+          template: _routineTemplates[4],
+          wide: true,
+          onTap: () => onUseTemplate(_routineTemplates[4].draft),
         ),
         const SizedBox(height: 28),
-        Text('Quick start', style: _sectionLabel(context)),
-        const SizedBox(height: 10),
-        ..._routineTemplates.map(
-          (template) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: RoutinePreset(
-              template: template,
-              onTap: () => onUseTemplate(template.draft),
-            ),
-          ),
-        ),
-        const SizedBox(height: 30),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -93,17 +63,9 @@ class RoutinesScreen extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (routines.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: AppColors.softCardGradient,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.line.withValues(alpha: 0.75)),
-            ),
-            child: Text(
-              'No routines yet. Pick a quick-start template above or create your own.',
-              style: _subtle(context),
-            ),
+          Text(
+            'No routines yet. Pick a template above or create your own.',
+            style: _subtle(context),
           )
         else
           ...routines.map(
@@ -115,12 +77,6 @@ class RoutinesScreen extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(height: 10),
-        FilledButton.tonalIcon(
-          onPressed: onAdd,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Create a custom routine'),
-        ),
       ],
     );
   }
@@ -135,7 +91,7 @@ class RoutineTemplate {
     required this.draft,
   });
 
-  final IconData icon;
+  final SpeakingClockIcon icon;
   final String title;
   final String subtitle;
   final Color color;
@@ -144,10 +100,10 @@ class RoutineTemplate {
 
 const _routineTemplates = [
   RoutineTemplate(
-    icon: Icons.water_drop_outlined,
-    title: 'Drink water',
-    subtitle: 'A gentle hydration nudge during work.',
-    color: AppColors.blue,
+    icon: SpeakingClockIcon.droplet,
+    title: 'Hydration',
+    subtitle: 'Every 60 min',
+    color: AppColors.sage,
     draft: ReminderDraft(
       title: 'Drink water',
       type: ReminderType.water,
@@ -158,9 +114,9 @@ const _routineTemplates = [
     ),
   ),
   RoutineTemplate(
-    icon: Icons.self_improvement_outlined,
-    title: 'Stand and stretch',
-    subtitle: 'Step away from the desk for a quick reset.',
+    icon: SpeakingClockIcon.stretch,
+    title: 'Stand & Stretch',
+    subtitle: 'Every 90 min',
     color: AppColors.sage,
     draft: ReminderDraft(
       title: 'Stand and stretch',
@@ -172,24 +128,10 @@ const _routineTemplates = [
     ),
   ),
   RoutineTemplate(
-    icon: Icons.visibility_outlined,
-    title: 'Eye break',
-    subtitle: 'Look away from the screen and relax your eyes.',
-    color: AppColors.blue,
-    draft: ReminderDraft(
-      title: 'Eye break',
-      type: ReminderType.breakTime,
-      deliveryMode: DeliveryMode.gentle,
-      repeatRule: 'Every 30 min',
-      tone: ToneOption.softChime,
-      snoozeMinutes: 5,
-    ),
-  ),
-  RoutineTemplate(
-    icon: Icons.medication_outlined,
+    icon: SpeakingClockIcon.pill,
     title: 'Medication',
-    subtitle: 'A stronger reminder for something important.',
-    color: AppColors.amber,
+    subtitle: 'Daily',
+    color: AppColors.sage,
     draft: ReminderDraft(
       title: 'Take medication',
       type: ReminderType.medication,
@@ -200,10 +142,24 @@ const _routineTemplates = [
     ),
   ),
   RoutineTemplate(
-    icon: Icons.videocam_outlined,
-    title: 'Meeting prep',
-    subtitle: 'A spoken nudge before you need to join.',
-    color: AppColors.amber,
+    icon: SpeakingClockIcon.target,
+    title: 'Focus Session',
+    subtitle: '25 min focus',
+    color: AppColors.darkWine,
+    draft: ReminderDraft(
+      title: 'Focus Session',
+      type: ReminderType.breakTime,
+      deliveryMode: DeliveryMode.gentle,
+      repeatRule: 'Every 25 min',
+      tone: ToneOption.softChime,
+      snoozeMinutes: 5,
+    ),
+  ),
+  RoutineTemplate(
+    icon: SpeakingClockIcon.calendar,
+    title: 'Meeting Prep',
+    subtitle: '10 min before meeting',
+    color: AppColors.sage,
     draft: ReminderDraft(
       title: 'Meeting prep',
       type: ReminderType.meeting,
@@ -215,26 +171,32 @@ const _routineTemplates = [
     ),
   ),
   RoutineTemplate(
-    icon: Icons.coffee_outlined,
-    title: 'Deep work break',
-    subtitle: 'A reliable interruption after a focused sprint.',
+    icon: SpeakingClockIcon.target,
+    title: 'Eye break',
+    subtitle: 'Every 30 min',
     color: AppColors.sage,
     draft: ReminderDraft(
-      title: 'Deep work break',
+      title: 'Eye break',
       type: ReminderType.breakTime,
-      deliveryMode: DeliveryMode.alarm,
-      repeatRule: 'Every 120 min',
-      tone: ToneOption.digitalBeep,
-      snoozeMinutes: 10,
+      deliveryMode: DeliveryMode.gentle,
+      repeatRule: 'Every 30 min',
+      tone: ToneOption.softChime,
+      snoozeMinutes: 5,
     ),
   ),
 ];
 
 class RoutinePreset extends StatelessWidget {
-  const RoutinePreset({super.key, required this.template, required this.onTap});
+  const RoutinePreset({
+    super.key,
+    required this.template,
+    required this.onTap,
+    this.wide = false,
+  });
 
   final RoutineTemplate template;
   final VoidCallback onTap;
+  final bool wide;
 
   @override
   Widget build(BuildContext context) {
@@ -245,76 +207,96 @@ class RoutinePreset extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            gradient: AppColors.softCardGradient,
+            gradient: AppColors.signatureHeroGradient,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.72)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.darkWine.withValues(alpha: 0.028),
-                blurRadius: 14,
-                offset: const Offset(0, 8),
+                color: AppColors.darkWine.withValues(alpha: 0.14),
+                blurRadius: 20,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
-          child: Row(
-            children: [
-              Container(
-                height: 50,
-                width: 50,
-                decoration: BoxDecoration(
-                  color: template.color.withValues(alpha: 0.13),
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(template.icon, color: template.color),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+          child: wide
+              ? Row(
+                  children: [
+                    _RoutineIcon(template: template),
+                    const SizedBox(width: 14),
+                    Expanded(child: _RoutineText(template: template)),
+                  ],
+                )
+              : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      template.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      template.subtitle,
-                      style: _subtle(context, small: true),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _TinyBadge(
-                          label: _deliveryShortLabel(
-                            template.draft.deliveryMode,
-                          ),
-                          color: _deliveryAccent(template.draft.deliveryMode),
-                          icon: _deliveryIcon(template.draft.deliveryMode),
-                        ),
-                        _TinyBadge(
-                          label: template.draft.repeatRule,
-                          color: AppColors.sage,
-                        ),
-                      ],
-                    ),
+                    _RoutineIcon(template: template),
+                    const Spacer(),
+                    _RoutineText(template: template),
                   ],
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.darkWine,
-              ),
-            ],
-          ),
         ),
       ),
+    );
+  }
+}
+
+class _RoutineIcon extends StatelessWidget {
+  const _RoutineIcon({required this.template});
+
+  final RoutineTemplate template;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      width: 48,
+      decoration: BoxDecoration(
+        color: AppColors.linen.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: CustomReminderIcon(
+          icon: template.icon,
+          color: Colors.white,
+          size: 26,
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutineText extends StatelessWidget {
+  const _RoutineText({required this.template});
+
+  final RoutineTemplate template;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          template.title,
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            color: AppColors.linen,
+            shadows: _softTextShadow(opacity: 0.28),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          template.subtitle,
+          style: TextStyle(
+            color: AppColors.linen.withValues(alpha: 0.94),
+            fontWeight: FontWeight.w900,
+            fontSize: 13,
+            height: 1.25,
+            shadows: _softTextShadow(opacity: 0.3),
+          ),
+        ),
+      ],
     );
   }
 }

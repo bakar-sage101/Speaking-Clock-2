@@ -288,8 +288,204 @@ Completed in second implementation pass:
   - Android debug APK build
   - Pixel 8 install and launch
 
+Completed in third implementation pass:
+
+- Reduced the “too many cards / CRM dashboard” feeling on the core screens.
+- Redesigned onboarding so each step no longer sits inside a large filled white card.
+- Kept onboarding as a full-screen gradient experience with:
+  - slim progress line
+  - direct content on the gradient
+  - larger soft icon surface
+  - small status pill only when a permission/check has a readiness state
+  - primary action near the main content
+- Simplified the Today header by removing the card wrapper around the greeting/date.
+- Redesigned the Next Up hero as the main emotional/visual object on the Today page.
+- Added the full reminder delivery type inside the Next Up hero, such as:
+  - Gentle Reminder
+  - Alarm Reminder
+  - Speaking Alarm
+- Gave Gentle/Water-style next reminders a softer water-like gradient treatment.
+- Reduced badge clutter in the Next Up hero by replacing multiple pills with one clear metadata line.
+- Simplified Later Today rows so they feel more like a schedule list and less like stacked CRM cards.
+- Fixed Reminder Details so the Snooze / Remind again button uses the reminder’s actual selected duration instead of hardcoded `10 min`.
+- Verified with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in fourth implementation pass:
+
+- Started adapting the app toward the new ChatGPT Web reference UI direction while preserving current working behavior.
+- Added a shared signature hero gradient inspired by the reference:
+  - Dark Wine
+  - Muted Wine
+  - Blush/Hazel
+  - Ash Grey
+- Made the Today `Next up` hero use the same filled signature gradient consistently for all reminder types.
+- Made the empty/quiet Today hero use the same signature gradient so the main card remains visually consistent before and after reminders exist.
+- Added lightweight custom-painted reminder icons for:
+  - water / droplet
+  - alarm / bell
+  - speaking / speaker
+  - stretch
+  - medication / pill
+  - meeting / calendar
+  - focus / target
+  - reliability / shield
+- Replaced Today reminder category icons with the custom icon system.
+- Updated the Add/Edit Reminder bottom sheet to float from the bottom with a visible top gap instead of touching the top of the screen.
+- Kept alarm scheduling, notification actions, native Android playback, and database behavior unchanged.
+- Verified with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in fifth implementation pass:
+
+- Migrated onboarding closer to the ChatGPT Web reference UI.
+- Reworked onboarding from a longer technical permission sequence into a calmer 4-step flow:
+  - Welcome
+  - Reminder intensities
+  - Reliable reminders
+  - Ready
+- Added reference-style onboarding dots.
+- Added reminder intensity cards for:
+  - Gentle reminder
+  - Alarm reminder
+  - Speaking reminder
+- Added a Reliable reminders checklist screen with readiness states for:
+  - Notifications
+  - Exact alarms
+  - Full-screen alarms
+  - Do Not Disturb access
+  - Alarm volume
+- Kept existing Android permission actions and readiness checks intact.
+- Migrated Add/Edit Reminder closer to the reference sheet style:
+  - Cancel / Save top row
+  - compact sheet title
+  - direct title field
+  - compact horizontal category tiles with custom icons
+  - existing schedule/repeat/delivery/tone/snooze logic preserved
+- Updated widget tests to match the new Add Reminder sheet title/action.
+- Verified with:
+  - `dart format lib`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in sixth implementation pass:
+
+- Removed onboarding escape paths:
+  - no `Skip` button
+  - no `I’ll set it up later`
+  - no `Learn more` bypass on the Reliable reminders step
+- Updated onboarding Reminder intensities so the three modes no longer sit inside heavy white cards.
+- Updated Reminder intensities icons to use circular signature-gradient icon bubbles, matching the first onboarding screen’s visual language.
+- Updated Reliable reminders checklist so each row keeps its own icon instead of replacing ready items with a generic checkmark.
+- Made onboarding’s primary Reliable reminders action include the DND setup step instead of hiding DND behind only a row tap.
+- Hardened Android DND settings opening with a fallback chain:
+  - Reliable alarms notification channel settings
+  - app notification settings
+  - notification policy access settings
+- Redesigned Reminder Detail toward the reference UI:
+  - centered icon/title/time
+  - compact Enabled switch
+  - one grouped detail list
+  - Edit/Duplicate/Delete action list
+  - selected snooze/remind-again duration retained
+- Redesigned Routines toward the reference UI:
+  - title/subtitle header
+  - 2-column template grid
+  - wide Meeting Prep card
+  - custom icons for templates
+- Updated widget tests for the new routines grid.
+- Verified with:
+  - `dart format lib test`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in seventh implementation pass:
+
+- Separated onboarding Reliable reminders setup into individual row actions instead of one grouped enable flow.
+- Each onboarding readiness item now has its own action:
+  - Notifications: Allow
+  - Exact alarms: Allow
+  - Full-screen alarms: Open
+  - Do Not Disturb: Open
+  - Alarm volume: Check
+- The Reliable reminders Continue button now stays unavailable until required setup is complete.
+- Made all Reminder intensities icon artwork solid white inside the circular signature-gradient bubbles.
+- Updated Routines template cards to use the same filled signature gradient as the Today `Next up` hero card.
+- Lightly polished Settings and Reliable Alarm setup toward the reference direction:
+  - simpler Settings header
+  - clearer reliability setup entry
+  - Reliable setup status icon bubble
+  - readiness rows with specific icons
+- Verified with:
+  - `dart format lib test`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in eighth implementation pass:
+
+- Made the Today `Next up` hero card tappable across the full card surface.
+- Kept the visible `Open reminder` affordance, but users no longer need to tap only that text.
+- Made Add/Edit Reminder bottom sheets explicitly swipe-dismissable with drag enabled.
+- Lightened Add/Edit Reminder row styling so section cards feel less heavy and closer to the reference sheet.
+- Improved Routines gradient-card subtitle readability:
+  - brighter subtitle text
+  - stronger font weight
+  - subtle shadow on gradient
+- Polished native Android full-screen alarm UI visually only:
+  - warmer gradient background
+  - signature wine/blush/ash icon bubble
+  - white alarm icon
+  - softer mode pill
+  - refined button radius/colors
+- Preserved native alarm behavior:
+  - acknowledge unchanged
+  - snooze unchanged
+  - scheduling unchanged
+  - playback unchanged
+- Verified with:
+  - `dart format lib test`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
+Completed in ninth implementation pass:
+
+- Fixed the final onboarding Ready screen so it matches the earlier onboarding visual language:
+  - removed the white note box
+  - changed the icon bubble to the signature gradient
+  - made the ready icon white
+  - kept the note as simple text on the gradient background
+- Fixed the Today `Next up` hero square-edge artifact by removing the rectangular Ink fill under the rounded gradient card and clipping ripple behavior.
+- Cleaned up Reminder Detail actions:
+  - removed the top-right three-dot menu
+  - removed duplicate/placeholder action from the action card
+  - kept direct Edit reminder and Delete reminder actions in the main action card
+- Verified with:
+  - `dart format lib test`
+  - `flutter analyze`
+  - `flutter test`
+  - Android debug APK build
+  - Pixel 8 install and launch
+
 Still to do in Phase 3G:
 
+- Continue deeper Settings and Reliable Alarm setup reference polish after Pixel visual review.
+- Continue refining Add/Edit Reminder row styling toward the reference UI while preserving behavior.
 - Apply the new visual identity to the native full-screen alarm screen.
 - Review contrast and readability on the Pixel after real-device visual inspection.
 - Decide whether any screens need reduced gradients after real-device visual inspection.
@@ -547,6 +743,33 @@ Build sequence:
    - Keep current working behavior stable.
    - Refine spacing, typography, icon, and button states only where safe.
    - Avoid risky changes to playback/scheduling during UX polish.
+   - Status: first visual polish pass implemented with warmer gradient surface, cleaner alarm icon treatment, and calmer acknowledge/snooze buttons.
+
+10. Reminder Detail and gradient readability polish
+   - Replace the old Reminder Detail overflow/menu/list-action pattern with visible, intentional management buttons.
+   - Edit is now the primary filled action; Delete is a direct but quieter outlined destructive action that still confirms before removing the reminder.
+   - Keep snooze/remind-again as a separate runtime action so it does not visually compete with edit/delete management.
+   - Add a shared soft text-shadow helper for white text on gradient surfaces.
+   - Apply the shadow consistently to Today hero text, empty-state gradient copy, and Routine template card text for better readability.
+   - Status: implemented; needs Pixel visual QA on Reminder Detail, Today hero, empty Today state, and Routines templates.
+
+11. Add/Edit, Settings, and Reminder Detail hierarchy polish
+   - Add/Edit Reminder now opens with a gradient creation hero containing the title field and category selector, making the sheet feel less like a raw form.
+   - Category chips now have a dedicated gradient-surface style with stronger frosted contrast, dark wine icons/text, and clearer selected states so they stay readable across the whole gradient.
+   - Editor section cards now use the shared `SoftPanel` surface for consistent borders, radius, and lift.
+   - Repeat, tone, and snooze/remind-again controls now use custom Speaking Clock pill controls instead of default Flutter choice chips.
+   - Delivery-mode cards now use a stronger selected-gradient treatment with white text, clearer badges, and softer unselected cards.
+   - Reminder Detail now has a gradient hero for icon, title, time, delivery type, and enabled/paused state.
+   - Settings reliability status now uses the signature gradient hero treatment, with readable white text and a clearer review button.
+   - Settings rows and Reliable Alarm setup rows now use custom icon bubbles and softer `SoftPanel` cards instead of default list-tile styling.
+   - Status: implemented; needs Pixel visual QA on Add/Edit sheet category visibility, Repeat, Tone, Snooze, and Delivery-mode selection.
+
+Next UI corrections to consider:
+
+- Add/Edit Reminder may still need spacing refinements after real-device review, especially around the horizontal category scroller and long tone labels.
+- Reminder Detail action hierarchy should be tested: Edit/Delete may stay as two buttons, or we may move Delete lower if it feels too visible.
+- Onboarding permission pages are functionally separated now, but each permission step can still be made more guided with clearer Android setting return states.
+- Gentle Reminder notification/detail language should remain distinct from Alarm Reminder and Speaking Alarm so users understand it is intentionally lighter.
 
 Acceptance criteria:
 

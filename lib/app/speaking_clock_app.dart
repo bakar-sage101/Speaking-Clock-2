@@ -110,8 +110,15 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
     final reminder = await showModalBottomSheet<Reminder>(
       context: _navigatorKey.currentState!.context,
       isScrollControlled: true,
+      enableDrag: true,
+      isDismissible: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReminderEditor(initialType: initialType, draft: draft),
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.88,
+        alignment: Alignment.bottomCenter,
+        child: ReminderEditor(initialType: initialType, draft: draft),
+      ),
     );
     if (reminder != null) {
       setState(() => _reminders = _sortReminders([..._reminders, reminder]));
@@ -125,9 +132,15 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
     final updated = await showModalBottomSheet<Reminder>(
       context: _navigatorKey.currentState!.context,
       isScrollControlled: true,
+      enableDrag: true,
+      isDismissible: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          ReminderEditor(initialType: original.type, reminder: original),
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.88,
+        alignment: Alignment.bottomCenter,
+        child: ReminderEditor(initialType: original.type, reminder: original),
+      ),
     );
     if (updated == null) return;
     await _cancelDeviceReminder(original);

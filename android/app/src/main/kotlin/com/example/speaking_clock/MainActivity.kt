@@ -50,15 +50,32 @@ class MainActivity : FlutterActivity() {
 
     private fun openDndSettings(result: MethodChannel.Result) {
         AlarmNotificationHelper.ensureChannels(this)
+        val intents = mutableListOf<Intent>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startActivity(
+            intents.add(
                 Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
                     putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
                     putExtra(Settings.EXTRA_CHANNEL_ID, AlarmNotificationHelper.reliableChannelId)
                 },
             )
-        } else {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            intents.add(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                },
+            )
+        }
+        intents.add(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+        val opened = intents.any { intent ->
+            try {
+                startActivity(intent)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+        if (!opened) {
+            result.error("dnd_settings_unavailable", "Unable to open Do Not Disturb settings.", null)
+            return
         }
         result.success(null)
     }

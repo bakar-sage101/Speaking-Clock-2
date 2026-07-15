@@ -11,21 +11,23 @@ void main() {
     expect(find.text('Add reminder'), findsOneWidget);
   });
 
-  testWidgets('opens the editor from add reminder and routine presets', (tester) async {
+  testWidgets('opens the editor from add reminder and routine presets', (
+    tester,
+  ) async {
     await tester.pumpWidget(const SpeakingClockApp());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add reminder'));
     await tester.pumpAndSettle();
-    expect(find.text('Create reminder'), findsOneWidget);
+    expect(find.text('Add reminder'), findsWidgets);
 
-    await tester.tap(find.byTooltip('Close'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Routines'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Eye break'));
+    await tester.tap(find.text('Hydration'));
     await tester.pumpAndSettle();
-    expect(find.text('Create reminder'), findsOneWidget);
-    expect(find.text('Break'), findsOneWidget);
+    expect(find.text('Add reminder'), findsWidgets);
+    expect(find.text('Water'), findsOneWidget);
   });
 }

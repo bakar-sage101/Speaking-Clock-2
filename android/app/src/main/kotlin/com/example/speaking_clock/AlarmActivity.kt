@@ -68,13 +68,16 @@ class AlarmActivity : Activity() {
     }
 
     private fun createContentView(): LinearLayout {
+        val darkWine = Color.rgb(111, 29, 27)
+        val mutedWine = Color.rgb(138, 54, 50)
+        val blush = Color.rgb(231, 201, 196)
         val sage = Color.rgb(95, 127, 103)
         val sageLight = Color.rgb(230, 238, 231)
-        val canvas = Color.rgb(247, 247, 243)
+        val linen = Color.rgb(240, 229, 222)
+        val canvas = Color.rgb(248, 241, 236)
         val ink = Color.rgb(24, 33, 27)
         val muted = Color.rgb(70, 78, 72)
         val amber = Color.rgb(200, 137, 69)
-        val surface = Color.WHITE
         val alarmVolumeMuted = !AlarmReadiness.isAlarmVolumeAudible(this)
 
         window.statusBarColor = canvas
@@ -87,7 +90,14 @@ class AlarmActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(24), dp(28), dp(24), dp(28))
-            setBackgroundColor(canvas)
+            background = verticalGradient(
+                intArrayOf(
+                    Color.rgb(246, 232, 226),
+                    canvas,
+                    Color.rgb(232, 239, 229),
+                ),
+                dp(0),
+            )
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -101,19 +111,22 @@ class AlarmActivity : Activity() {
 
         val iconWrap = LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            background = rounded(sageLight, 24)
-            elevation = dp(2).toFloat()
+            background = verticalGradient(
+                intArrayOf(darkWine, mutedWine, blush, sageLight),
+                dp(30),
+            )
+            elevation = dp(8).toFloat()
         }
         iconWrap.addView(
             ImageView(this).apply {
                 setImageResource(android.R.drawable.ic_lock_idle_alarm)
-                setColorFilter(sage)
+                setColorFilter(Color.WHITE)
             },
-            LinearLayout.LayoutParams(dp(34), dp(34)),
+            LinearLayout.LayoutParams(dp(38), dp(38)),
         )
         content.addView(
             iconWrap,
-            LinearLayout.LayoutParams(dp(74), dp(74)),
+            LinearLayout.LayoutParams(dp(82), dp(82)),
         )
 
         content.addView(
@@ -138,10 +151,10 @@ class AlarmActivity : Activity() {
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
                 letterSpacing = 0.12f
-                setTextColor(sage)
+                setTextColor(darkWine)
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(8), dp(14), dp(8))
-                background = rounded(sageLight, 18)
+                background = rounded(linen, 18, Color.argb(90, 111, 29, 27), 1)
             },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -199,14 +212,14 @@ class AlarmActivity : Activity() {
         )
 
         content.addView(
-            alarmButton("Acknowledge", sage, Color.WHITE, 22) { acknowledge() },
+            alarmButton("Acknowledge", sage, Color.WHITE, 24) { acknowledge() },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(58),
             ).apply { topMargin = dp(24) },
         )
         content.addView(
-            alarmButton("Snooze $snoozeMinutes min", sageLight, sage, 22, sage, 1) { snooze() },
+            alarmButton("Snooze $snoozeMinutes min", linen, sage, 24, sage, 1) { snooze() },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(56),
@@ -217,7 +230,7 @@ class AlarmActivity : Activity() {
                 text = "Speaking Clock"
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(amber)
+                setTextColor(darkWine)
                 gravity = Gravity.CENTER
                 setPadding(0, dp(24), 0, 0)
             },
@@ -264,6 +277,12 @@ class AlarmActivity : Activity() {
             if (strokeColor != null && strokeWidthDp > 0) {
                 setStroke(dp(strokeWidthDp), strokeColor)
             }
+        }
+    }
+
+    private fun verticalGradient(colors: IntArray, radiusPx: Int): GradientDrawable {
+        return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
+            cornerRadius = radiusPx.toFloat()
         }
     }
 

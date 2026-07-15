@@ -234,85 +234,117 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    height: 46,
-                    width: 46,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.heroGradient,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.add_alarm_rounded,
-                      color: AppColors.darkWine,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          editing ? 'Edit reminder' : 'Create reminder',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          'Choose how Speaking Clock should get your attention.',
-                          style: _subtle(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Close',
+                  TextButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: _canSave ? _save : null,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(74, 42),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    child: const Text('Save'),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              _EditorCard(
-                title: 'What should I remind you about?',
-                icon: Icons.edit_note_rounded,
-                child: TextField(
-                  controller: _controller,
-                  autofocus: !editing,
-                  onChanged: (_) => setState(() {}),
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: 'Drink water',
-                    errorText: _controller.text.isEmpty
-                        ? null
-                        : _canSave
-                        ? null
-                        : 'Add a title before saving.',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
+              const SizedBox(height: 12),
+              SoftPanel(
+                radius: 28,
+                padding: const EdgeInsets.all(18),
+                gradient: AppColors.signatureHeroGradient,
+                borderColor: Colors.transparent,
+                shadowOpacity: 0.12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      editing ? 'Edit reminder' : 'Add reminder',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.linen,
+                        fontWeight: FontWeight.w900,
+                        shadows: _softTextShadow(opacity: 0.3),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              _EditorCard(
-                title: 'Reminder category',
-                icon: Icons.category_outlined,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: ReminderType.values
-                      .map(
-                        (type) => ChoiceChip(
-                          label: Text(_label(type)),
-                          selected: type == _type,
-                          onSelected: (_) => setState(() => _type = type),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Name it, choose the type, then set how strongly it should reach you.',
+                      style: TextStyle(
+                        color: AppColors.linen.withValues(alpha: 0.82),
+                        height: 1.35,
+                        fontWeight: FontWeight.w700,
+                        shadows: _softTextShadow(opacity: 0.24),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Title',
+                      style: _compactFieldLabel(context, light: true),
+                    ),
+                    const SizedBox(height: 7),
+                    TextField(
+                      controller: _controller,
+                      autofocus: !editing,
+                      onChanged: (_) => setState(() {}),
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        hintText: 'Drink water',
+                        filled: true,
+                        fillColor: AppColors.brightSnow.withValues(alpha: 0.88),
+                        errorText: _controller.text.isEmpty
+                            ? null
+                            : _canSave
+                            ? null
+                            : 'Add a title before saving.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
                         ),
-                      )
-                      .toList(),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(18),
+                          borderSide: const BorderSide(
+                            color: AppColors.linen,
+                            width: 1.4,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Category',
+                      style: _compactFieldLabel(context, light: true),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 82,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemBuilder: (context, index) {
+                          final type = ReminderType.values[index];
+                          return _CategoryPill(
+                            type: type,
+                            selected: type == _type,
+                            onTap: () => setState(() => _type = type),
+                            onGradient: true,
+                          );
+                        },
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemCount: ReminderType.values.length,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 14),
@@ -325,18 +357,22 @@ class _ReminderEditorState extends State<ReminderEditor> {
                     OutlinedButton(
                       onPressed: _pickTime,
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(72),
+                        minimumSize: const Size.fromHeight(58),
                         alignment: Alignment.centerLeft,
-                        side: const BorderSide(color: AppColors.line),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: AppColors.line.withValues(alpha: 0.65),
                         ),
-                        backgroundColor: AppColors.brightSnow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor: AppColors.brightSnow.withValues(
+                          alpha: 0.74,
+                        ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               gradient: AppColors.softCardGradient,
                               borderRadius: BorderRadius.circular(14),
@@ -383,11 +419,13 @@ class _ReminderEditorState extends State<ReminderEditor> {
                       runSpacing: 8,
                       children: _repeatOptions
                           .map(
-                            (option) => ChoiceChip(
+                            (option) => _EditorChoicePill(
                               label: Text(option),
                               selected: option == _frequency,
-                              onSelected: (_) =>
-                                  setState(() => _frequency = option),
+                              icon: option == 'Custom minutes'
+                                  ? Icons.tune_rounded
+                                  : Icons.event_repeat_rounded,
+                              onTap: () => setState(() => _frequency = option),
                             ),
                           )
                           .toList(),
@@ -463,11 +501,11 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   runSpacing: 8,
                   children: ToneOption.values
                       .map(
-                        (tone) => ChoiceChip(
-                          avatar: Icon(_toneIcon(tone), size: 18),
+                        (tone) => _EditorChoicePill(
+                          icon: _toneIcon(tone),
                           label: Text(_toneLabel(tone)),
                           selected: tone == _tone,
-                          onSelected: (_) => setState(() => _tone = tone),
+                          onTap: () => setState(() => _tone = tone),
                         ),
                       )
                       .toList(),
@@ -496,10 +534,11 @@ class _ReminderEditorState extends State<ReminderEditor> {
                       runSpacing: 8,
                       children: [2, 5, 10, 15, 30]
                           .map(
-                            (value) => ChoiceChip(
+                            (value) => _EditorChoicePill(
                               label: Text('$value min'),
                               selected: value == _snoozeMinutes,
-                              onSelected: (_) =>
+                              icon: Icons.snooze_rounded,
+                              onTap: () =>
                                   setState(() => _snoozeMinutes = value),
                             ),
                           )
@@ -520,14 +559,6 @@ class _ReminderEditorState extends State<ReminderEditor> {
                     ),
                   ),
                 ),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _canSave ? _save : null,
-                  icon: const Icon(Icons.check_rounded),
-                  label: Text(editing ? 'Save changes' : 'Save reminder'),
-                ),
-              ),
             ],
           ),
         ),
@@ -549,21 +580,9 @@ class _EditorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return SoftPanel(
+      radius: 22,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: AppColors.softCardGradient,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.line.withValues(alpha: 0.78)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkWine.withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -592,6 +611,170 @@ class _EditorCard extends StatelessWidget {
           const SizedBox(height: 14),
           child,
         ],
+      ),
+    );
+  }
+}
+
+TextStyle _compactFieldLabel(BuildContext context, {bool light = false}) =>
+    Theme.of(context).textTheme.labelSmall!.copyWith(
+      color: light
+          ? AppColors.linen.withValues(alpha: 0.9)
+          : AppColors.ink.withValues(alpha: 0.74),
+      fontWeight: FontWeight.w900,
+      letterSpacing: 0.5,
+      shadows: light ? _softTextShadow(opacity: 0.22) : null,
+    );
+
+class _CategoryPill extends StatelessWidget {
+  const _CategoryPill({
+    required this.type,
+    required this.selected,
+    required this.onTap,
+    this.onGradient = false,
+  });
+
+  final ReminderType type;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool onGradient;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = switch (type) {
+      ReminderType.water => (SpeakingClockIcon.droplet, AppColors.sage),
+      ReminderType.breakTime => (SpeakingClockIcon.stretch, AppColors.sage),
+      ReminderType.meeting => (SpeakingClockIcon.calendar, AppColors.darkWine),
+      ReminderType.medication => (SpeakingClockIcon.pill, AppColors.mutedWine),
+      ReminderType.custom => (SpeakingClockIcon.target, AppColors.ink),
+    };
+    final color = onGradient
+        ? AppColors.darkWine
+        : selected
+        ? AppColors.sage
+        : AppColors.ink;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: onGradient
+              ? AppColors.brightSnow.withValues(alpha: selected ? 0.9 : 0.72)
+              : selected
+              ? AppColors.sage.withValues(alpha: 0.20)
+              : AppColors.brightSnow.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? (onGradient ? AppColors.darkWine : AppColors.sage)
+                : (onGradient
+                      ? AppColors.brightSnow.withValues(alpha: 0.8)
+                      : AppColors.line),
+            width: selected ? 1.5 : 1,
+          ),
+          boxShadow: onGradient
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomReminderIcon(
+              icon: data.$1,
+              color: onGradient ? color : (selected ? data.$2 : color),
+              size: 23,
+            ),
+            const SizedBox(height: 7),
+            Text(
+              _label(type),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorChoicePill extends StatelessWidget {
+  const _EditorChoicePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+  });
+
+  final Widget label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? AppColors.linen : AppColors.darkWine;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(
+            gradient: selected ? AppColors.wineHeroGradient : null,
+            color: selected
+                ? null
+                : AppColors.brightSnow.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected
+                  ? AppColors.darkWine.withValues(alpha: 0.12)
+                  : AppColors.line.withValues(alpha: 0.9),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.darkWine.withValues(
+                  alpha: selected ? 0.12 : 0.025,
+                ),
+                blurRadius: selected ? 16 : 8,
+                offset: const Offset(0, 7),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 17, color: foreground),
+                const SizedBox(width: 7),
+              ],
+              DefaultTextStyle.merge(
+                style: TextStyle(
+                  color: foreground,
+                  fontWeight: FontWeight.w900,
+                  shadows: selected ? _softTextShadow(opacity: 0.24) : null,
+                ),
+                child: label,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -631,33 +814,36 @@ class _DeliveryModeCard extends StatelessWidget {
       DeliveryMode.alarm => AppColors.darkWine,
       DeliveryMode.speaking => AppColors.mutedWine,
     };
+    final foreground = selected ? AppColors.linen : AppColors.ink;
+    final mutedForeground = selected
+        ? AppColors.linen.withValues(alpha: 0.82)
+        : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(24),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          gradient: selected
-              ? LinearGradient(
-                  colors: [
-                    accent.withValues(alpha: 0.14),
-                    AppColors.brightSnow,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : const LinearGradient(
-                  colors: [AppColors.brightSnow, AppColors.linen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderRadius: BorderRadius.circular(20),
+          gradient: selected ? AppColors.signatureHeroGradient : null,
+          color: selected ? null : AppColors.brightSnow.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: selected ? accent : AppColors.line,
-            width: selected ? 1.4 : 1,
+            color: selected
+                ? AppColors.darkWine.withValues(alpha: 0.12)
+                : AppColors.line,
+            width: selected ? 1.5 : 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.darkWine.withValues(
+                alpha: selected ? 0.12 : 0.025,
+              ),
+              blurRadius: selected ? 18 : 10,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,10 +851,12 @@ class _DeliveryModeCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.brightSnow.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(14),
+                color: selected
+                    ? AppColors.linen.withValues(alpha: 0.16)
+                    : accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: accent),
+              child: Icon(icon, color: selected ? AppColors.linen : accent),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -683,20 +871,31 @@ class _DeliveryModeCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.w900,
-                                color: AppColors.ink,
+                                color: foreground,
+                                shadows: selected
+                                    ? _softTextShadow(opacity: 0.26)
+                                    : null,
                               ),
                         ),
                       ),
                       if (selected)
                         Icon(
                           Icons.check_circle_rounded,
-                          color: accent,
+                          color: AppColors.linen,
                           size: 20,
                         ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(description, style: _subtle(context)),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: mutedForeground,
+                      fontWeight: FontWeight.w700,
+                      height: 1.28,
+                      shadows: selected ? _softTextShadow(opacity: 0.22) : null,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
@@ -709,15 +908,20 @@ class _DeliveryModeCard extends StatelessWidget {
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: selected
+                                  ? AppColors.linen.withValues(alpha: 0.16)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               badge,
                               style: TextStyle(
-                                color: accent,
-                                fontWeight: FontWeight.w800,
+                                color: selected ? AppColors.linen : accent,
+                                fontWeight: FontWeight.w900,
                                 fontSize: 12,
+                                shadows: selected
+                                    ? _softTextShadow(opacity: 0.22)
+                                    : null,
                               ),
                             ),
                           ),

@@ -82,53 +82,27 @@ class _TodayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: AppColors.softCardGradient,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.line),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkWine.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 52,
-            width: 52,
-            decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Icon(
-              Icons.wb_sunny_outlined,
-              color: AppColors.darkWine,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _greeting(),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _greeting(),
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.ink,
                 ),
-                const SizedBox(height: 3),
-                Text(_friendlyDate(DateTime.now()), style: _subtle(context)),
-              ],
-            ),
+              ),
+              const SizedBox(height: 3),
+              Text(_friendlyDate(DateTime.now()), style: _subtle(context)),
+            ],
           ),
-          ReadinessChip(readiness: readiness),
-        ],
-      ),
+        ),
+        ReadinessChip(readiness: readiness),
+      ],
     );
   }
 }
@@ -206,9 +180,15 @@ class EmptyReminderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: AppColors.softCardGradient,
-        border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(28),
+        gradient: AppColors.signatureHeroGradient,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.darkWine.withValues(alpha: 0.16),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,25 +197,35 @@ class EmptyReminderCard extends StatelessWidget {
             height: 58,
             width: 58,
             decoration: BoxDecoration(
-              gradient: AppColors.heroGradient,
+              color: AppColors.linen.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
-              Icons.notifications_none_rounded,
-              color: AppColors.darkWine,
+            child: const Center(
+              child: CustomReminderIcon(
+                icon: SpeakingClockIcon.bell,
+                color: AppColors.linen,
+                size: 30,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Your day is quiet',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: AppColors.linen,
+              shadows: _softTextShadow(opacity: 0.24),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Create a gentle nudge, a full-screen alarm, or a spoken reminder when something matters.',
-            style: _subtle(context),
+            style: TextStyle(
+              color: AppColors.linen.withValues(alpha: 0.78),
+              height: 1.35,
+              fontWeight: FontWeight.w700,
+              shadows: _softTextShadow(opacity: 0.22),
+            ),
           ),
           const SizedBox(height: 14),
           const Wrap(
@@ -360,107 +350,134 @@ class NextReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = _deliveryAccent(reminder.deliveryMode);
-    final isImportant = reminder.deliveryMode != DeliveryMode.gentle;
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: isImportant
-            ? AppColors.wineHeroGradient
-            : AppColors.heroGradient,
-        border: Border.all(color: AppColors.line),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: (isImportant ? AppColors.darkWine : AppColors.ashGrey)
-                .withValues(alpha: 0.18),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ReminderIcon(type: reminder.type, large: true),
-              _TinyBadge(
-                label: _deliveryShortLabel(reminder.deliveryMode),
-                color: isImportant ? AppColors.linen : accent,
-                icon: _deliveryIcon(reminder.deliveryMode),
+    const foreground = AppColors.linen;
+    final quietForeground = AppColors.linen.withValues(alpha: 0.78);
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(34),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(34),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+          decoration: BoxDecoration(
+            gradient: AppColors.signatureHeroGradient,
+            borderRadius: BorderRadius.circular(34),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.darkWine.withValues(alpha: 0.16),
+                blurRadius: 30,
+                offset: const Offset(0, 18),
               ),
             ],
           ),
-          const SizedBox(height: 22),
-          Text(
-            reminder.time,
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: isImportant ? AppColors.linen : AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            reminder.title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w900,
-              color: isImportant ? AppColors.linen : AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _TinyBadge(
-                label: _repeatRule(reminder),
-                color: isImportant ? AppColors.linen : AppColors.sage,
-                icon: Icons.repeat_rounded,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ReminderIcon(type: reminder.type, large: true),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.linen.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _deliveryIcon(reminder.deliveryMode),
+                          size: 14,
+                          color: AppColors.linen,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          _deliveryLabel(reminder.deliveryMode),
+                          style: const TextStyle(
+                            color: AppColors.linen,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ).copyWith(shadows: _softTextShadow(opacity: 0.22)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _TinyBadge(
-                label: _toneLabel(reminder.tone),
-                color: isImportant ? AppColors.linen : AppColors.amber,
-                icon: _toneIcon(reminder.tone),
-              ),
-              if (reminder.isSpeakingAlarm)
-                const _TinyBadge(
-                  label: 'Speaks',
-                  color: AppColors.linen,
-                  icon: Icons.record_voice_over_rounded,
+              const SizedBox(height: 26),
+              Text(
+                reminder.time,
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: foreground,
+                  letterSpacing: -1.2,
+                  shadows: _softTextShadow(opacity: 0.3),
                 ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                reminder.title,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: foreground,
+                  shadows: _softTextShadow(opacity: 0.28),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                [
+                  _repeatRule(reminder),
+                  _toneLabel(reminder.tone),
+                  if (reminder.isSpeakingAlarm) 'Speaks message',
+                ].join(' · '),
+                style: TextStyle(
+                  color: quietForeground,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                  shadows: _softTextShadow(opacity: 0.24),
+                ),
+              ),
+              if (!reminder.enabled) ...[
+                const SizedBox(height: 12),
+                const _TinyBadge(
+                  label: 'Paused',
+                  color: AppColors.amber,
+                  icon: Icons.pause_circle_outline_rounded,
+                ),
+              ],
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.tune_rounded,
+                    color: AppColors.linen,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Open reminder',
+                    style: TextStyle(
+                      color: AppColors.linen,
+                      fontWeight: FontWeight.w800,
+                    ).copyWith(shadows: _softTextShadow(opacity: 0.24)),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: AppColors.linen.withValues(alpha: 0.85),
+                    size: 20,
+                  ),
+                ],
+              ),
             ],
           ),
-          if (!reminder.enabled) ...[
-            const SizedBox(height: 12),
-            const _TinyBadge(
-              label: 'Paused',
-              color: AppColors.amber,
-              icon: Icons.pause_circle_outline_rounded,
-            ),
-          ],
-          const SizedBox(height: 18),
-          OutlinedButton.icon(
-            onPressed: onOpen,
-            icon: const Icon(Icons.tune_rounded),
-            label: const Text('Open reminder'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(46),
-              foregroundColor: isImportant
-                  ? AppColors.linen
-                  : AppColors.darkWine,
-              side: BorderSide(
-                color: isImportant
-                    ? AppColors.linen.withValues(alpha: 0.72)
-                    : AppColors.darkWine.withValues(alpha: 0.28),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -479,17 +496,9 @@ class ReminderRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            gradient: reminder.enabled ? AppColors.softCardGradient : null,
-            color: reminder.enabled
-                ? null
-                : AppColors.brightSnow.withValues(alpha: 0.58),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.line),
-          ),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
           child: Row(
             children: [
               ReminderIcon(type: reminder.type),
@@ -573,14 +582,11 @@ class ReminderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = switch (type) {
-      ReminderType.water => (Icons.water_drop_outlined, AppColors.blue),
-      ReminderType.breakTime => (
-        Icons.self_improvement_outlined,
-        AppColors.sage,
-      ),
-      ReminderType.meeting => (Icons.videocam_outlined, AppColors.amber),
-      ReminderType.medication => (Icons.medication_outlined, AppColors.amber),
-      ReminderType.custom => (Icons.notifications_none_rounded, AppColors.sage),
+      ReminderType.water => (SpeakingClockIcon.droplet, AppColors.blue),
+      ReminderType.breakTime => (SpeakingClockIcon.stretch, AppColors.sage),
+      ReminderType.meeting => (SpeakingClockIcon.calendar, AppColors.amber),
+      ReminderType.medication => (SpeakingClockIcon.pill, AppColors.amber),
+      ReminderType.custom => (SpeakingClockIcon.bell, AppColors.sage),
     };
     final size = large ? 50.0 : 42.0;
     return Container(
@@ -590,7 +596,13 @@ class ReminderIcon extends StatelessWidget {
         color: data.$2.withValues(alpha: .16),
         borderRadius: BorderRadius.circular(large ? 16 : 13),
       ),
-      child: Icon(data.$1, color: data.$2, size: large ? 26 : 22),
+      child: Center(
+        child: CustomReminderIcon(
+          icon: data.$1,
+          color: data.$2,
+          size: large ? 28 : 23,
+        ),
+      ),
     );
   }
 }

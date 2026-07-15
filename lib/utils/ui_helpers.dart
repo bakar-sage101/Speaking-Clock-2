@@ -12,6 +12,60 @@ TextStyle _subtle(BuildContext context, {bool small = false}) =>
             : Theme.of(context).textTheme.bodyMedium)!
         .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
 
+List<Shadow> _softTextShadow({double opacity = 0.28, double blurRadius = 9}) {
+  return [
+    Shadow(
+      color: Colors.black.withValues(alpha: opacity),
+      blurRadius: blurRadius,
+      offset: const Offset(0, 1.2),
+    ),
+  ];
+}
+
+BoxShadow _softLiftedShadow({double opacity = 0.08, double blurRadius = 22}) {
+  return BoxShadow(
+    color: AppColors.darkWine.withValues(alpha: opacity),
+    blurRadius: blurRadius,
+    offset: const Offset(0, 12),
+  );
+}
+
+class SoftPanel extends StatelessWidget {
+  const SoftPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 22,
+    this.gradient = AppColors.softCardGradient,
+    this.borderColor,
+    this.shadowOpacity = 0.025,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+  final Gradient gradient;
+  final Color? borderColor;
+  final double shadowOpacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: borderColor ?? AppColors.line.withValues(alpha: 0.62),
+        ),
+        boxShadow: [_softLiftedShadow(opacity: shadowOpacity, blurRadius: 14)],
+      ),
+      child: child,
+    );
+  }
+}
+
 String _label(ReminderType type) => switch (type) {
   ReminderType.water => 'Water',
   ReminderType.breakTime => 'Break',

@@ -16,5 +16,6 @@ part 'screens/settings/settings_screen.dart';
 part 'screens/reminder_detail/reminder_detail_screen.dart';
 part 'screens/reminder_editor/reminder_editor.dart';
 part 'utils/ui_helpers.dart';
+part 'widgets/custom_icons.dart';
 
 void main() => runApp(const SpeakingClockApp());

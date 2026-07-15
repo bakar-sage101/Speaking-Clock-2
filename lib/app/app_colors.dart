@@ -41,4 +41,11 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [brightSnow, canvas],
   );
+
+  static const signatureHeroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [darkWine, mutedWine, blush, ashGrey],
+    stops: [0.0, 0.28, 0.66, 1.0],
+  );
 }

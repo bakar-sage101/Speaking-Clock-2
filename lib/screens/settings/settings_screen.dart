@@ -21,74 +21,37 @@ class SettingsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
       children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: AppColors.softCardGradient,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.75)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.darkWine.withValues(alpha: 0.035),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 52,
-                width: 52,
-                decoration: BoxDecoration(
-                  gradient: AppColors.heroGradient,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(
-                  Icons.settings_rounded,
-                  color: AppColors.darkWine,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Settings',
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Control reliability, reminders, and app preferences.',
-                      style: _subtle(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        Text(
+          'Settings',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: AppColors.darkWine,
+            fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 4),
+        Text(
+          'Control reliability, reminders, and preferences.',
+          style: _subtle(context),
+        ),
+        const SizedBox(height: 24),
         Text('Reliability', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: ready
-                ? AppColors.heroGradient
-                : const LinearGradient(
-                    colors: [AppColors.amberLight, AppColors.linen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: (ready ? AppColors.ashGrey : AppColors.mutedWine)
-                  .withValues(alpha: 0.16),
-            ),
-          ),
+        SoftPanel(
+          radius: 28,
+          padding: const EdgeInsets.all(20),
+          gradient: ready
+              ? AppColors.signatureHeroGradient
+              : const LinearGradient(
+                  colors: [
+                    AppColors.darkWine,
+                    AppColors.blush,
+                    AppColors.linen,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          borderColor: Colors.transparent,
+          shadowOpacity: 0.11,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -96,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Icon(
                     ready ? Icons.verified_rounded : Icons.info_outline_rounded,
-                    color: ready ? AppColors.darkWine : AppColors.mutedWine,
+                    color: AppColors.linen,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -108,8 +71,8 @@ class SettingsScreen extends StatelessWidget {
                           : 'Reliable Alarm needs attention',
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: AppColors.ink,
-                      ),
+                        color: AppColors.linen,
+                      ).copyWith(shadows: _softTextShadow(opacity: 0.28)),
                     ),
                   ),
                   _TinyBadge(
@@ -118,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
                         : ready
                         ? 'Ready'
                         : 'Review',
-                    color: ready ? AppColors.darkWine : AppColors.mutedWine,
+                    color: AppColors.linen,
                   ),
                 ],
               ),
@@ -127,22 +90,33 @@ class SettingsScreen extends StatelessWidget {
                 ready
                     ? 'Alarm Reminder and Speaking Alarm can use Android’s reliable alarm path on this device.'
                     : 'Review notifications, exact alarms, full-screen behavior, DND, and alarm volume before relying on important reminders.',
-                style: const TextStyle(height: 1.35),
+                style: TextStyle(
+                  height: 1.35,
+                  color: AppColors.linen.withValues(alpha: 0.82),
+                  fontWeight: FontWeight.w700,
+                  shadows: _softTextShadow(opacity: 0.24),
+                ),
               ),
               const SizedBox(height: 14),
-              FilledButton.tonalIcon(
+              FilledButton.icon(
                 onPressed: onOpenReliability,
                 icon: const Icon(Icons.shield_outlined),
                 label: const Text('Review setup'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.linen,
+                  foregroundColor: AppColors.darkWine,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 10),
-        const SettingTile(
-          icon: Icons.bug_report_outlined,
-          title: 'Troubleshooting',
-          subtitle: 'Debug/status screen coming soon',
+        SettingTile(
+          icon: Icons.shield_outlined,
+          title: 'Reliable alarm setup',
+          subtitle: 'Review and configure',
+          onTap: onOpenReliability,
         ),
         const SizedBox(height: 30),
         Text('Reminder behavior', style: _sectionLabel(context)),
@@ -228,27 +202,48 @@ class SettingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: AppColors.softCardGradient,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.line.withValues(alpha: 0.72)),
-        ),
-        child: ListTile(
-          leading: Icon(icon, color: AppColors.darkWine),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          subtitle: Text(subtitle),
-          trailing: onTap == null
-              ? null
-              : const Icon(
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: SoftPanel(
+          radius: 22,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.darkWine.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: AppColors.darkWine, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(subtitle, style: _subtle(context, small: true)),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                const Icon(
                   Icons.chevron_right_rounded,
                   color: AppColors.darkWine,
                 ),
-          onTap: onTap,
+            ],
+          ),
         ),
       ),
     );
@@ -310,37 +305,45 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
   Widget build(BuildContext context) {
     final ready = _readiness?.isReady ?? false;
     return Scaffold(
-      appBar: AppBar(title: const Text('Reliable Alarm')),
+      appBar: AppBar(title: const Text('Reliable Alarm setup')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: ready
-                        ? AppColors.heroGradient
-                        : const LinearGradient(
-                            colors: [AppColors.amberLight, AppColors.linen],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: (ready ? AppColors.ashGrey : AppColors.mutedWine)
-                          .withValues(alpha: 0.16),
-                    ),
-                  ),
+                SoftPanel(
+                  radius: 30,
+                  padding: const EdgeInsets.all(22),
+                  gradient: ready
+                      ? AppColors.signatureHeroGradient
+                      : const LinearGradient(
+                          colors: [
+                            AppColors.darkWine,
+                            AppColors.blush,
+                            AppColors.linen,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  borderColor: Colors.transparent,
+                  shadowOpacity: 0.12,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        ready
-                            ? Icons.verified_rounded
-                            : Icons.info_outline_rounded,
-                        color: ready ? AppColors.darkWine : AppColors.mutedWine,
-                        size: 28,
+                      Container(
+                        height: 58,
+                        width: 58,
+                        decoration: BoxDecoration(
+                          color: AppColors.linen.withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: CustomReminderIcon(
+                            icon: SpeakingClockIcon.shield,
+                            color: AppColors.linen,
+                            size: 30,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -348,7 +351,9 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                             ? 'Reliable Alarm is ready'
                             : 'Finish setup for Reliable Alarm',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          color: AppColors.linen,
+                          fontWeight: FontWeight.w900,
+                          shadows: _softTextShadow(opacity: 0.28),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -356,6 +361,12 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                         ready
                             ? 'Important reminders can use Android’s alarm channel and spoken voice.'
                             : 'Complete each item below before relying on a spoken alarm.',
+                        style: TextStyle(
+                          color: AppColors.linen.withValues(alpha: 0.82),
+                          height: 1.35,
+                          fontWeight: FontWeight.w700,
+                          shadows: _softTextShadow(opacity: 0.22),
+                        ),
                       ),
                     ],
                   ),
@@ -364,6 +375,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                 if (_error != null)
                   Text('Unable to read device status: $_error'),
                 _ReadinessItem(
+                  icon: Icons.notifications_active_outlined,
                   title: 'Notifications',
                   detail: 'Allow Speaking Clock notifications',
                   ready: _readiness?.notificationsEnabled ?? false,
@@ -372,6 +384,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                   actionLabel: 'Allow',
                 ),
                 _ReadinessItem(
+                  icon: Icons.alarm_rounded,
                   title: 'Exact alarms',
                   detail: 'Let important alarms fire at their exact time',
                   ready: _readiness?.exactAlarmEnabled ?? false,
@@ -380,6 +393,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                   actionLabel: 'Allow',
                 ),
                 _ReadinessItem(
+                  icon: Icons.do_not_disturb_on_outlined,
                   title: 'Do Not Disturb',
                   detail: 'Allow Reliable alarms to interrupt Do Not Disturb',
                   ready: _readiness?.dndPolicyAccess ?? false,
@@ -387,6 +401,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                   actionLabel: 'Open channel',
                 ),
                 _ReadinessItem(
+                  icon: Icons.fullscreen_rounded,
                   title: 'Full-screen alarms',
                   detail: 'Let alarms take over the lock screen',
                   ready: _readiness?.fullScreenIntentEnabled ?? false,
@@ -396,6 +411,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
                   actionLabel: 'Open settings',
                 ),
                 _ReadinessItem(
+                  icon: Icons.volume_up_outlined,
                   title: 'Alarm volume',
                   detail: 'Keep alarm volume above the lowest level',
                   ready: _readiness?.alarmVolumeEnabled ?? false,
@@ -416,6 +432,7 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
 
 class _ReadinessItem extends StatelessWidget {
   const _ReadinessItem({
+    required this.icon,
     required this.title,
     required this.detail,
     required this.ready,
@@ -423,6 +440,7 @@ class _ReadinessItem extends StatelessWidget {
     required this.actionLabel,
   });
 
+  final IconData icon;
   final String title;
   final String detail;
   final bool ready;
@@ -435,32 +453,66 @@ class _ReadinessItem extends StatelessWidget {
       padding: const EdgeInsets.only(top: 10),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: AppColors.softCardGradient,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.line.withValues(alpha: 0.72)),
-          ),
-          child: ListTile(
-            leading: Icon(
-              ready ? Icons.check_circle_rounded : Icons.circle_outlined,
-              color: ready ? AppColors.darkWine : AppColors.mutedWine,
-            ),
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Text(detail),
-            trailing: ready
-                ? const Text(
+        borderRadius: BorderRadius.circular(22),
+        child: SoftPanel(
+          radius: 22,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: (ready ? AppColors.sage : AppColors.darkWine)
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: ready ? AppColors.sage : AppColors.darkWine,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(detail, style: _subtle(context, small: true)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              if (ready)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.sage.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
                     'Ready',
                     style: TextStyle(
                       color: AppColors.darkWine,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
                     ),
-                  )
-                : TextButton(onPressed: action, child: Text(actionLabel)),
+                  ),
+                )
+              else
+                TextButton(onPressed: action, child: Text(actionLabel)),
+            ],
           ),
         ),
       ),
