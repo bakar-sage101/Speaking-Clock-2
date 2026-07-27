@@ -285,8 +285,8 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
   @override
   Widget build(BuildContext context) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.darkWine,
-      brightness: _darkMode ? Brightness.dark : Brightness.light,
+      seedColor: AppColors.auraMagenta,
+      brightness: Brightness.dark,
     );
     return MaterialApp(
       title: 'Speaking Clock',
@@ -296,24 +296,85 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: scheme.copyWith(
-          primary: AppColors.darkWine,
-          secondary: AppColors.ashGrey,
-          surface: AppColors.brightSnow,
-          onSurface: AppColors.ink,
+          primary: AppColors.bone,
+          onPrimary: AppColors.ink,
+          secondary: AppColors.boneDim,
+          surface: AppColors.surface,
+          surfaceContainerHighest: AppColors.surfaceRaised,
+          onSurface: AppColors.bone,
+          onSurfaceVariant: AppColors.boneDim,
+          outline: AppColors.line,
+          error: AppColors.destructive,
         ),
-        scaffoldBackgroundColor: _darkMode
-            ? const Color(0xff111411)
-            : AppColors.canvas,
-        fontFamily: 'Inter',
+        scaffoldBackgroundColor: AppColors.ink,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.ink,
+          foregroundColor: AppColors.bone,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: AppColors.surface.withValues(alpha: 0.96),
+          indicatorColor: AppColors.bone,
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => TextStyle(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.bone
+                  : AppColors.boneDim,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          iconTheme: WidgetStateProperty.resolveWith(
+            (states) => IconThemeData(
+              color: states.contains(WidgetState.selected)
+                  ? AppColors.ink
+                  : AppColors.boneDim,
+            ),
+          ),
+        ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: AppColors.darkWine,
-            foregroundColor: AppColors.linen,
+            backgroundColor: AppColors.bone,
+            foregroundColor: AppColors.ink,
+            textStyle: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.bone,
+            side: const BorderSide(color: AppColors.line),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.06),
+          labelStyle: const TextStyle(color: AppColors.boneDim),
+          hintStyle: const TextStyle(color: AppColors.boneDim),
+          helperStyle: const TextStyle(color: AppColors.boneDim),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.line),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: const BorderSide(color: AppColors.bone, width: 1.2),
+          ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: AppColors.surfaceRaised,
+          contentTextStyle: const TextStyle(color: AppColors.bone),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: AppColors.darkWine,
-          foregroundColor: AppColors.linen,
+          backgroundColor: AppColors.brass,
+          foregroundColor: Color(0xff1A1205),
         ),
       ),
       home: _onboardingComplete == null
@@ -367,33 +428,118 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
                   ? null
                   : FloatingActionButton.extended(
                       onPressed: _showAddReminder,
-                      backgroundColor: AppColors.sage,
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.brass,
+                      foregroundColor: const Color(0xff1A1205),
                       icon: const Icon(Icons.add_rounded),
                       label: const Text('Add reminder'),
                     ),
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: _tab,
-                onDestinationSelected: (value) => setState(() => _tab = value),
-                destinations: const [
-                  NavigationDestination(
-                    icon: Icon(Icons.today_outlined),
-                    selectedIcon: Icon(Icons.today_rounded),
-                    label: 'Today',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.repeat_rounded),
-                    selectedIcon: Icon(Icons.repeat_one_rounded),
-                    label: 'Routines',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.settings_outlined),
-                    selectedIcon: Icon(Icons.settings_rounded),
-                    label: 'Settings',
-                  ),
-                ],
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.endFloat,
+              bottomNavigationBar: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: _AuraBottomNav(
+                  selectedIndex: _tab,
+                  onSelected: (value) => setState(() => _tab = value),
+                ),
               ),
             ),
+    );
+  }
+}
+
+class _AuraBottomNav extends StatelessWidget {
+  const _AuraBottomNav({required this.selectedIndex, required this.onSelected});
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  static const _items = [
+    (Icons.schedule_outlined, Icons.schedule_rounded, 'Today'),
+    (Icons.grid_view_outlined, Icons.grid_view_rounded, 'Routines'),
+    (Icons.tune_outlined, Icons.tune_rounded, 'Setup'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(34),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Container(
+          height: 70,
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.88),
+            borderRadius: BorderRadius.circular(34),
+            border: Border.all(color: AppColors.line),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.42),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              for (var i = 0; i < _items.length; i++)
+                Expanded(
+                  child: _AuraBottomNavItem(
+                    icon: _items[i].$1,
+                    selectedIcon: _items[i].$2,
+                    label: _items[i].$3,
+                    selected: i == selectedIndex,
+                    onTap: () => onSelected(i),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuraBottomNavItem extends StatelessWidget {
+  const _AuraBottomNavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            selected ? selectedIcon : icon,
+            color: selected ? AppColors.brass : AppColors.boneDim,
+            size: 21,
+          ),
+          const SizedBox(height: 5),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontFamily: 'monospace',
+              color: selected ? AppColors.bone : AppColors.boneDim,
+              fontSize: 9,
+              letterSpacing: 1.8,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -68,36 +68,26 @@ class AlarmActivity : Activity() {
     }
 
     private fun createContentView(): LinearLayout {
-        val darkWine = Color.rgb(111, 29, 27)
-        val mutedWine = Color.rgb(138, 54, 50)
-        val blush = Color.rgb(231, 201, 196)
-        val sage = Color.rgb(95, 127, 103)
-        val sageLight = Color.rgb(230, 238, 231)
-        val linen = Color.rgb(240, 229, 222)
-        val canvas = Color.rgb(248, 241, 236)
-        val ink = Color.rgb(24, 33, 27)
-        val muted = Color.rgb(70, 78, 72)
-        val amber = Color.rgb(200, 137, 69)
+        val ink = Color.rgb(10, 10, 10)
+        val surfaceGlass = Color.argb(18, 255, 255, 255)
+        val line = Color.argb(24, 255, 255, 255)
+        val bone = Color.WHITE
+        val boneDim = Color.argb(158, 255, 255, 255)
+        val destructive = Color.rgb(217, 119, 87)
+        val aura = if (spoken) Color.rgb(232, 90, 155) else Color.rgb(232, 140, 120)
         val alarmVolumeMuted = !AlarmReadiness.isAlarmVolumeAudible(this)
 
-        window.statusBarColor = canvas
-        window.navigationBarColor = canvas
+        window.statusBarColor = ink
+        window.navigationBarColor = ink
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            window.decorView.systemUiVisibility = 0
         }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setPadding(dp(24), dp(28), dp(24), dp(28))
-            background = verticalGradient(
-                intArrayOf(
-                    Color.rgb(246, 232, 226),
-                    canvas,
-                    Color.rgb(232, 239, 229),
-                ),
-                dp(0),
-            )
+            background = auraBackground(aura)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -111,10 +101,7 @@ class AlarmActivity : Activity() {
 
         val iconWrap = LinearLayout(this).apply {
             gravity = Gravity.CENTER
-            background = verticalGradient(
-                intArrayOf(darkWine, mutedWine, blush, sageLight),
-                dp(30),
-            )
+            background = rounded(surfaceGlass, 30, line, 1)
             elevation = dp(8).toFloat()
         }
         iconWrap.addView(
@@ -134,7 +121,7 @@ class AlarmActivity : Activity() {
                 text = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
                 textSize = 42f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(ink)
+                setTextColor(bone)
                 gravity = Gravity.CENTER
                 includeFontPadding = false
             },
@@ -151,10 +138,10 @@ class AlarmActivity : Activity() {
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
                 letterSpacing = 0.12f
-                setTextColor(darkWine)
+                setTextColor(bone)
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(8), dp(14), dp(8))
-                background = rounded(linen, 18, Color.argb(90, 111, 29, 27), 1)
+                background = rounded(surfaceGlass, 18, line, 1)
             },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -172,7 +159,7 @@ class AlarmActivity : Activity() {
                 text = title
                 textSize = 34f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(ink)
+                setTextColor(bone)
                 gravity = Gravity.CENTER
                 includeFontPadding = false
                 setLineSpacing(0f, 0.96f)
@@ -183,7 +170,7 @@ class AlarmActivity : Activity() {
                 TextView(this).apply {
                     text = spokenMessage.ifBlank { "It is time for $title" }
                     textSize = 18f
-                    setTextColor(muted)
+                    setTextColor(boneDim)
                     gravity = Gravity.CENTER
                     setPadding(0, dp(16), 0, 0)
                     setLineSpacing(dp(3).toFloat(), 1.0f)
@@ -196,7 +183,7 @@ class AlarmActivity : Activity() {
                     text = "Alarm volume is muted or too low. Raise alarm volume to hear speech and tone."
                     textSize = 15f
                     typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(amber)
+                    setTextColor(destructive)
                     gravity = Gravity.CENTER
                     setPadding(dp(14), dp(16), dp(14), 0)
                     setLineSpacing(dp(2).toFloat(), 1.0f)
@@ -212,14 +199,14 @@ class AlarmActivity : Activity() {
         )
 
         content.addView(
-            alarmButton("Acknowledge", sage, Color.WHITE, 24) { acknowledge() },
+            alarmButton("Acknowledge", bone, ink, 24) { acknowledge() },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(58),
             ).apply { topMargin = dp(24) },
         )
         content.addView(
-            alarmButton("Snooze $snoozeMinutes min", linen, sage, 24, sage, 1) { snooze() },
+            alarmButton("Snooze $snoozeMinutes min", surfaceGlass, bone, 24, line, 1) { snooze() },
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(56),
@@ -230,7 +217,7 @@ class AlarmActivity : Activity() {
                 text = "Speaking Clock"
                 textSize = 13f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(darkWine)
+                setTextColor(boneDim)
                 gravity = Gravity.CENTER
                 setPadding(0, dp(24), 0, 0)
             },
@@ -283,6 +270,20 @@ class AlarmActivity : Activity() {
     private fun verticalGradient(colors: IntArray, radiusPx: Int): GradientDrawable {
         return GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
             cornerRadius = radiusPx.toFloat()
+        }
+    }
+
+    private fun auraBackground(aura: Int): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            colors = intArrayOf(
+                Color.argb(220, Color.red(aura), Color.green(aura), Color.blue(aura)),
+                Color.argb(88, Color.red(aura), Color.green(aura), Color.blue(aura)),
+                Color.rgb(10, 10, 10),
+            )
+            gradientRadius = dp(460).toFloat()
+            setGradientCenter(0.46f, 0.42f)
         }
     }
 

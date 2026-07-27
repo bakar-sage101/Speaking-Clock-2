@@ -764,8 +764,43 @@ Build sequence:
    - Settings rows and Reliable Alarm setup rows now use custom icon bubbles and softer `SoftPanel` cards instead of default list-tile styling.
    - Status: implemented; needs Pixel visual QA on Add/Edit sheet category visibility, Repeat, Tone, Snooze, and Delivery-mode selection.
 
+12. Aura-on-Ink visual system migration
+   - Replaced the warm cream/wine/sage visual identity with a dark-first “Aura on Ink” design system.
+   - Added true ink, raised surface, bone text, dim text, hairline border, glass, aura magenta, aura blue, aura coral, and aura lime tokens.
+   - Added reusable Aura/Glass UI primitives:
+     - `AuraPanel` for meaningful hero/active surfaces.
+     - `GlassPanel` for regular cards, rows, settings, routines, and controls.
+     - subtle custom grain/noise painter over aura surfaces.
+   - Updated app theme to dark-first:
+     - black canvas,
+     - white primary buttons with ink text,
+     - glass secondary surfaces,
+     - dark navigation,
+     - dark input fields,
+     - dark snackbars.
+   - Applied semantic aura mapping:
+     - Gentle Reminder → lime aura.
+     - Alarm Reminder → coral aura.
+     - Speaking Alarm / hero → magenta aura.
+     - Onboarding/icon emphasis → blue/magenta aura.
+   - Migrated key Flutter screens:
+     - Today Next Up and empty state,
+     - Add/Edit Reminder hero and controls,
+     - Reminder Detail hero and details,
+     - Routines template cards,
+     - Settings and Reliable Alarm setup,
+     - Onboarding.
+   - Migrated native Android full-screen alarm screen:
+     - dark lock-screen canvas,
+     - coral aura for Alarm Reminder,
+     - magenta aura for Speaking Alarm,
+     - white acknowledge button,
+     - glass snooze button.
+   - Status: first implementation pass complete; requires real-device visual QA for contrast, spacing, and dark-screen readability.
+
 Next UI corrections to consider:
 
+- Aura-on-Ink needs a Pixel visual QA pass; likely refinements include bloom strength, glass contrast, chip spacing, and any text that feels too dim.
 - Add/Edit Reminder may still need spacing refinements after real-device review, especially around the horizontal category scroller and long tone labels.
 - Reminder Detail action hierarchy should be tested: Edit/Delete may stay as two buttons, or we may move Delete lower if it feels too visible.
 - Onboarding permission pages are functionally separated now, but each permission step can still be made more guided with clearer Android setting return states.
@@ -777,7 +812,7 @@ Acceptance criteria:
 - The difference between Gentle Reminder, Alarm Reminder, and Speaking Alarm is obvious.
 - Gentle Reminder feels intentionally lightweight, not broken or too quiet.
 - Existing Android reliability tests still pass after UI changes.
-- The visual design remains minimal, calm, cream/sage, and easy on the eyes.
+- The visual design remains minimal, cinematic, dark-first, and easy on the eyes.
 
 Original Phase 3 ideas:
 

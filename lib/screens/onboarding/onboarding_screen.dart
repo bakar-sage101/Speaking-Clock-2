@@ -73,20 +73,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.onboardingGradient),
+      body: _OnboardingAuraBackground(
+        page: _page,
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
             child: Column(
               children: [
+                _OnboardingProgressLine(current: _page, count: 4),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     if (_page > 0)
                       IconButton(
                         onPressed: () => _goTo(_page - 1),
                         icon: const Icon(Icons.arrow_back_rounded),
-                        color: AppColors.ink,
+                        color: AppColors.bone,
                       )
                     else
                       const SizedBox(width: 48),
@@ -119,13 +121,121 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ],
                   ),
                 ),
-                _OnboardingDots(current: _page, count: 4),
-                const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OnboardingAuraBackground extends StatelessWidget {
+  const _OnboardingAuraBackground({required this.page, required this.child});
+
+  final int page;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dominant = switch (page) {
+      0 => AppColors.auraMagenta,
+      1 => AppColors.auraBlue,
+      2 => AppColors.auraLime,
+      _ => AppColors.auraMagenta,
+    };
+    final edge = switch (page) {
+      0 => AppColors.auraBlue,
+      1 => AppColors.auraMagenta,
+      2 => AppColors.auraBlue,
+      _ => AppColors.auraLime,
+    };
+    final center = switch (page) {
+      0 => const Alignment(0.0, 0.22),
+      1 => const Alignment(-0.25, -0.02),
+      2 => const Alignment(-0.28, 0.02),
+      _ => const Alignment(0.0, 0.0),
+    };
+    return Stack(
+      children: [
+        const Positioned.fill(child: ColoredBox(color: AppColors.ink)),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: center,
+                radius: 0.9,
+                colors: [
+                  dominant.withValues(alpha: page == 2 ? 0.62 : 0.72),
+                  dominant.withValues(alpha: 0.28),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.38, 0.72],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0.92, -0.82),
+                radius: 1.1,
+                colors: [edge.withValues(alpha: 0.22), Colors.transparent],
+                stops: const [0.0, 0.48],
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.36),
+                  Colors.transparent,
+                  Colors.black.withValues(alpha: 0.36),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: IgnorePointer(child: CustomPaint(painter: _NoisePainter())),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+class _OnboardingProgressLine extends StatelessWidget {
+  const _OnboardingProgressLine({required this.current, required this.count});
+
+  final int current;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(count, (index) {
+        final active = index <= current;
+        return Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            height: 4,
+            margin: EdgeInsets.only(right: index == count - 1 ? 0 : 6),
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.bone
+                  : AppColors.bone.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
@@ -138,10 +248,17 @@ class _WelcomeOnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OnboardingShell(
-      top: const Text('Welcome to', style: TextStyle(fontSize: 20)),
-      title: 'Speaking Clock',
-      body:
-          'Your calm companion for reminders that speak, ring, and keep you on track.',
+      top: const Text(
+        'S P E A K I N G',
+        style: TextStyle(
+          color: AppColors.boneDim,
+          fontSize: 11,
+          letterSpacing: 6,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      title: 'Clock',
+      body: 'A calm companion for the things that matter.',
       art: const _HeroIconBubble(
         icon: SpeakingClockIcon.bell,
         color: AppColors.linen,
@@ -164,7 +281,7 @@ class _IntensitiesOnboardingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _OnboardingShell(
       title: 'Reminder intensities',
-      body: 'Choose how you want to be reminded.',
+      body: 'Three ways to reach you, depending on what matters.',
       content: const Column(
         children: [
           _IntensityTile(
@@ -225,8 +342,9 @@ class _ReliableOnboardingPage extends StatelessWidget {
         readiness?.dndPolicyAccess == true &&
         readiness?.alarmVolumeEnabled == true;
     return _OnboardingShell(
-      title: 'Reliable reminders',
-      body: 'Speaking Clock uses these features to keep you on time.',
+      title: 'Let reminders through',
+      body:
+          'Allow the essentials so alarms can speak, ring, and appear when needed.',
       content: Column(
         children: [
           _ReliableFeatureRow(
@@ -299,7 +417,7 @@ class _ReadyOnboardingPage extends StatelessWidget {
         'You can review or change these settings anytime in Reliability.',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppColors.ink.withValues(alpha: 0.74),
+          color: AppColors.boneDim,
           fontWeight: FontWeight.w700,
           height: 1.35,
         ),
@@ -347,9 +465,12 @@ class _OnboardingShell extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.darkWine,
-                      fontWeight: FontWeight.w900,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      color: AppColors.bone,
+                      fontWeight: FontWeight.w500,
+                      fontStyle: FontStyle.italic,
+                      letterSpacing: -0.8,
+                      shadows: _softTextShadow(opacity: 0.35, blurRadius: 14),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -357,8 +478,9 @@ class _OnboardingShell extends StatelessWidget {
                     body,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.ink.withValues(alpha: 0.78),
+                      color: AppColors.boneDim,
                       height: 1.45,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   if (art != null) ...[const SizedBox(height: 34), art!],
@@ -406,51 +528,17 @@ class _HeroIconBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        gradient: gradient,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkWine.withValues(alpha: 0.14),
-            blurRadius: 34,
-            offset: const Offset(0, 18),
-          ),
-        ],
-      ),
-      child: Center(
-        child: CustomReminderIcon(icon: icon, color: color, size: iconSize),
-      ),
-    );
-  }
-}
-
-class _MiniGradientIconBubble extends StatelessWidget {
-  const _MiniGradientIconBubble({required this.icon, required this.foreground});
-
-  final SpeakingClockIcon icon;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 66,
-      width: 66,
-      decoration: BoxDecoration(
-        gradient: AppColors.signatureHeroGradient,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkWine.withValues(alpha: 0.10),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Center(
-        child: CustomReminderIcon(icon: icon, color: foreground, size: 32),
+    return AuraPanel(
+      hue: AuraHue.magenta,
+      padding: EdgeInsets.zero,
+      radius: size / 2,
+      showGrain: true,
+      child: SizedBox(
+        height: size,
+        width: size,
+        child: Center(
+          child: CustomReminderIcon(icon: icon, color: color, size: iconSize),
+        ),
       ),
     );
   }
@@ -471,27 +559,50 @@ class _IntensityTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _MiniGradientIconBubble(icon: icon, foreground: Colors.white),
-          const SizedBox(width: 14),
+          Container(
+            height: 54,
+            width: 54,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Center(
+              child: CustomReminderIcon(
+                icon: icon,
+                color: AppColors.bone,
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    color: color == AppColors.darkWine
-                        ? AppColors.darkWine
-                        : AppColors.ink,
-                    fontWeight: FontWeight.w900,
+                  style: const TextStyle(
+                    color: AppColors.bone,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    height: 1.05,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(body, style: _subtle(context, small: true)),
+                const SizedBox(height: 5),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppColors.boneDim,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
+                ),
               ],
             ),
           ),
@@ -520,94 +631,79 @@ class _ReliableFeatureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Row(
-          children: [
-            Container(
-              height: 42,
-              width: 42,
-              decoration: BoxDecoration(
-                color: AppColors.linen.withValues(alpha: 0.54),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: CustomReminderIcon(
-                  icon: icon,
-                  color: ready ? AppColors.sage : AppColors.darkWine,
-                  size: 21,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: ready ? 0.12 : 0.07),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.line),
                 ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                child: Center(
+                  child: CustomReminderIcon(
+                    icon: icon,
+                    color: ready ? AppColors.bone : AppColors.boneDim,
+                    size: 22,
                   ),
-                  const SizedBox(height: 2),
-                  Text(body, style: _subtle(context, small: true)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (ready)
-              const Text(
-                'Ready',
-                style: TextStyle(
-                  color: AppColors.sage,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12,
                 ),
-              )
-            else
-              TextButton(
-                onPressed: onTap,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkWine,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 36),
-                ),
-                child: Text(actionLabel),
               ),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.bone,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(body, style: _subtle(context, small: true)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (ready)
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_rounded, color: AppColors.bone, size: 15),
+                    SizedBox(width: 4),
+                    Text(
+                      'Allowed',
+                      style: TextStyle(
+                        color: AppColors.bone,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                TextButton(
+                  onPressed: onTap,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.bone,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 36),
+                  ),
+                  child: Text(actionLabel),
+                ),
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-class _OnboardingDots extends StatelessWidget {
-  const _OnboardingDots({required this.current, required this.count});
-
-  final int current;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (index) {
-        final active = index == current;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          height: 9,
-          width: active ? 18 : 9,
-          decoration: BoxDecoration(
-            color: active
-                ? AppColors.darkWine
-                : AppColors.ink.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(99),
-          ),
-        );
-      }),
     );
   }
 }

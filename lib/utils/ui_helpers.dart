@@ -12,6 +12,38 @@ TextStyle _subtle(BuildContext context, {bool small = false}) =>
             : Theme.of(context).textTheme.bodyMedium)!
         .copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant);
 
+/// Humanist serif for anything the clock "says" — greetings, titles, spoken
+/// lines. On Android this resolves to Noto Serif.
+TextStyle _serif({
+  double size = 24,
+  Color? color,
+  FontWeight weight = FontWeight.w500,
+  double height = 1.05,
+  double letterSpacing = -0.2,
+}) => TextStyle(
+  fontFamily: 'serif',
+  fontSize: size,
+  color: color,
+  fontWeight: weight,
+  height: height,
+  letterSpacing: letterSpacing,
+);
+
+/// Monospace instrument face for eyebrows, units and timestamps. On Android
+/// this resolves to Roboto Mono.
+TextStyle _mono({
+  double size = 10,
+  Color? color,
+  double spacing = 2.2,
+  FontWeight weight = FontWeight.w600,
+}) => TextStyle(
+  fontFamily: 'monospace',
+  fontSize: size,
+  color: color,
+  letterSpacing: spacing,
+  fontWeight: weight,
+);
+
 List<Shadow> _softTextShadow({double opacity = 0.28, double blurRadius = 9}) {
   return [
     Shadow(
@@ -24,11 +56,72 @@ List<Shadow> _softTextShadow({double opacity = 0.28, double blurRadius = 9}) {
 
 BoxShadow _softLiftedShadow({double opacity = 0.08, double blurRadius = 22}) {
   return BoxShadow(
-    color: AppColors.darkWine.withValues(alpha: opacity),
+    color: Colors.black.withValues(alpha: opacity),
     blurRadius: blurRadius,
     offset: const Offset(0, 12),
   );
 }
+
+enum AuraHue { magenta, blue, coral, lime }
+
+class AuraSpec {
+  const AuraSpec({
+    required this.dominant,
+    required this.edge,
+    required this.center,
+    required this.edgeCenter,
+    this.dominantOpacity = 0.85,
+    this.edgeOpacity = 0.26,
+  });
+
+  final Color dominant;
+  final Color edge;
+  final Alignment center;
+  final Alignment edgeCenter;
+  final double dominantOpacity;
+  final double edgeOpacity;
+}
+
+AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
+  AuraHue.magenta => const AuraSpec(
+    dominant: AppColors.auraMagenta,
+    edge: AppColors.auraBlue,
+    center: Alignment(-0.1, 0.15),
+    edgeCenter: Alignment(0.95, -0.9),
+    dominantOpacity: 0.85,
+    edgeOpacity: 0.28,
+  ),
+  AuraHue.blue => const AuraSpec(
+    dominant: AppColors.auraBlue,
+    edge: AppColors.auraMagenta,
+    center: Alignment(0.0, 0.0),
+    edgeCenter: Alignment(0.9, -0.85),
+    dominantOpacity: 0.85,
+    edgeOpacity: 0.25,
+  ),
+  AuraHue.coral => const AuraSpec(
+    dominant: AppColors.auraCoral,
+    edge: AppColors.auraLime,
+    center: Alignment(0.0, 0.0),
+    edgeCenter: Alignment(-0.95, 0.95),
+    dominantOpacity: 0.80,
+    edgeOpacity: 0.22,
+  ),
+  AuraHue.lime => const AuraSpec(
+    dominant: AppColors.auraLime,
+    edge: AppColors.auraBlue,
+    center: Alignment(-0.2, 0.0),
+    edgeCenter: Alignment(0.95, 0.95),
+    dominantOpacity: 0.70,
+    edgeOpacity: 0.24,
+  ),
+};
+
+AuraHue _auraForDelivery(DeliveryMode mode) => switch (mode) {
+  DeliveryMode.gentle => AuraHue.lime,
+  DeliveryMode.alarm => AuraHue.coral,
+  DeliveryMode.speaking => AuraHue.magenta,
+};
 
 class SoftPanel extends StatelessWidget {
   const SoftPanel({
@@ -36,17 +129,19 @@ class SoftPanel extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.radius = 22,
-    this.gradient = AppColors.softCardGradient,
+    this.gradient,
     this.borderColor,
     this.shadowOpacity = 0.025,
+    this.backgroundColor = AppColors.glass,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
-  final Gradient gradient;
+  final Gradient? gradient;
   final Color? borderColor;
   final double shadowOpacity;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +149,7 @@ class SoftPanel extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
+        color: backgroundColor,
         gradient: gradient,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
@@ -64,6 +160,156 @@ class SoftPanel extends StatelessWidget {
       child: child,
     );
   }
+}
+
+class GlassPanel extends StatelessWidget {
+  const GlassPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 22,
+    this.opacity = 0.04,
+    this.gradient,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+  final double opacity;
+  final Gradient? gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: opacity),
+            gradient: gradient,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: AppColors.line),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.24),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class AuraPanel extends StatelessWidget {
+  const AuraPanel({
+    super.key,
+    required this.child,
+    this.hue = AuraHue.magenta,
+    this.padding = const EdgeInsets.all(20),
+    this.radius = 28,
+    this.showGrain = true,
+  });
+
+  final Widget child;
+  final AuraHue hue;
+  final EdgeInsetsGeometry padding;
+  final double radius;
+  final bool showGrain;
+
+  @override
+  Widget build(BuildContext context) {
+    final spec = _auraSpec(hue);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.ink,
+                borderRadius: BorderRadius.circular(radius),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: spec.center,
+                  radius: 0.95,
+                  colors: [
+                    spec.dominant.withValues(alpha: spec.dominantOpacity),
+                    spec.dominant.withValues(alpha: 0.30),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.32, 0.65],
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: spec.edgeCenter,
+                  radius: 1.2,
+                  colors: [
+                    spec.edge.withValues(alpha: spec.edgeOpacity),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.45],
+                ),
+              ),
+            ),
+          ),
+          if (showGrain)
+            const Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: _NoisePainter()),
+              ),
+            ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(color: AppColors.line),
+              ),
+            ),
+          ),
+          Padding(padding: padding, child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoisePainter extends CustomPainter {
+  const _NoisePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.045)
+      ..strokeWidth = 1;
+    var seed = 17;
+    for (var i = 0; i < 900; i++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      final x = (seed % 10000) / 10000 * size.width;
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      final y = (seed % 10000) / 10000 * size.height;
+      canvas.drawPoints(PointMode.points, [Offset(x, y)], paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 String _label(ReminderType type) => switch (type) {
@@ -90,12 +336,6 @@ IconData _deliveryIcon(DeliveryMode mode) => switch (mode) {
   DeliveryMode.gentle => Icons.notifications_none_rounded,
   DeliveryMode.alarm => Icons.alarm_rounded,
   DeliveryMode.speaking => Icons.record_voice_over_rounded,
-};
-
-Color _deliveryAccent(DeliveryMode mode) => switch (mode) {
-  DeliveryMode.gentle => const Color(0xff829f98),
-  DeliveryMode.alarm => AppColors.darkWine,
-  DeliveryMode.speaking => AppColors.mutedWine,
 };
 
 String _toneLabel(ToneOption tone) => switch (tone) {

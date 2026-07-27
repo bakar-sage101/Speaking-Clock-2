@@ -25,8 +25,9 @@ class RoutinesScreen extends StatelessWidget {
         Text(
           'Routines',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: AppColors.darkWine,
+            color: AppColors.bone,
             fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
           ),
         ),
         const SizedBox(height: 4),
@@ -200,25 +201,21 @@ class RoutinePreset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hue = switch (template.draft.deliveryMode) {
+      DeliveryMode.gentle => AuraHue.lime,
+      DeliveryMode.alarm => AuraHue.coral,
+      DeliveryMode.speaking => AuraHue.magenta,
+    };
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
-        child: Container(
+        child: AuraPanel(
+          hue: hue,
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: AppColors.signatureHeroGradient,
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.darkWine.withValues(alpha: 0.14),
-                blurRadius: 20,
-                offset: const Offset(0, 12),
-              ),
-            ],
-          ),
+          radius: 22,
           child: wide
               ? Row(
                   children: [
@@ -252,13 +249,14 @@ class _RoutineIcon extends StatelessWidget {
       height: 48,
       width: 48,
       decoration: BoxDecoration(
-        color: AppColors.linen.withValues(alpha: 0.16),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
       ),
       child: Center(
         child: CustomReminderIcon(
           icon: template.icon,
-          color: Colors.white,
+          color: AppColors.bone,
           size: 26,
         ),
       ),
@@ -279,21 +277,16 @@ class _RoutineText extends StatelessWidget {
       children: [
         Text(
           template.title,
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            color: AppColors.linen,
-            shadows: _softTextShadow(opacity: 0.28),
-          ),
+          style: TextStyle(fontWeight: FontWeight.w900, color: AppColors.bone),
         ),
         const SizedBox(height: 4),
         Text(
           template.subtitle,
           style: TextStyle(
-            color: AppColors.linen.withValues(alpha: 0.94),
+            color: AppColors.boneDim,
             fontWeight: FontWeight.w900,
             fontSize: 13,
             height: 1.25,
-            shadows: _softTextShadow(opacity: 0.3),
           ),
         ),
       ],

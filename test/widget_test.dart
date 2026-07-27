@@ -23,7 +23,7 @@ void main() {
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Routines'));
+    await tester.tap(find.text('ROUTINES'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hydration'));
     await tester.pumpAndSettle();

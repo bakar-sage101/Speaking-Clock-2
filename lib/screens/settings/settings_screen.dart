@@ -36,22 +36,10 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: 24),
         Text('Reliability', style: _sectionLabel(context)),
         const SizedBox(height: 10),
-        SoftPanel(
+        AuraPanel(
+          hue: ready ? AuraHue.lime : AuraHue.coral,
           radius: 28,
           padding: const EdgeInsets.all(20),
-          gradient: ready
-              ? AppColors.signatureHeroGradient
-              : const LinearGradient(
-                  colors: [
-                    AppColors.darkWine,
-                    AppColors.blush,
-                    AppColors.linen,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-          borderColor: Colors.transparent,
-          shadowOpacity: 0.11,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -104,7 +92,7 @@ class SettingsScreen extends StatelessWidget {
                 label: const Text('Review setup'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.linen,
-                  foregroundColor: AppColors.darkWine,
+                  foregroundColor: AppColors.ink,
                   textStyle: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
@@ -152,18 +140,15 @@ class SettingsScreen extends StatelessWidget {
         Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: AppColors.softCardGradient,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.line.withValues(alpha: 0.72)),
-            ),
+          child: GlassPanel(
+            radius: 18,
+            padding: EdgeInsets.zero,
             child: SwitchListTile.adaptive(
               value: darkMode,
               onChanged: onDarkModeChanged,
               secondary: const Icon(
                 Icons.dark_mode_outlined,
-                color: AppColors.darkWine,
+                color: AppColors.boneDim,
               ),
               title: const Text(
                 'Dark mode',
@@ -206,7 +191,7 @@ class SettingTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
-        child: SoftPanel(
+        child: GlassPanel(
           radius: 22,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           child: Row(
@@ -215,10 +200,10 @@ class SettingTile extends StatelessWidget {
                 height: 44,
                 width: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.darkWine.withValues(alpha: 0.08),
+                  color: Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, color: AppColors.darkWine, size: 22),
+                child: Icon(icon, color: AppColors.boneDim, size: 22),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -229,7 +214,7 @@ class SettingTile extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: AppColors.ink,
+                        color: AppColors.bone,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -240,7 +225,7 @@ class SettingTile extends StatelessWidget {
               if (onTap != null)
                 const Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.darkWine,
+                  color: AppColors.boneDim,
                 ),
             ],
           ),
@@ -311,22 +296,10 @@ class _ReliabilityScreenState extends State<ReliabilityScreen>
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                SoftPanel(
+                AuraPanel(
+                  hue: ready ? AuraHue.lime : AuraHue.coral,
                   radius: 30,
                   padding: const EdgeInsets.all(22),
-                  gradient: ready
-                      ? AppColors.signatureHeroGradient
-                      : const LinearGradient(
-                          colors: [
-                            AppColors.darkWine,
-                            AppColors.blush,
-                            AppColors.linen,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                  borderColor: Colors.transparent,
-                  shadowOpacity: 0.12,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -454,7 +427,7 @@ class _ReadinessItem extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(22),
-        child: SoftPanel(
+        child: GlassPanel(
           radius: 22,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           child: Row(
@@ -463,13 +436,12 @@ class _ReadinessItem extends StatelessWidget {
                 height: 40,
                 width: 40,
                 decoration: BoxDecoration(
-                  color: (ready ? AppColors.sage : AppColors.darkWine)
-                      .withValues(alpha: 0.12),
+                  color: Colors.white.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
-                  color: ready ? AppColors.sage : AppColors.darkWine,
+                  color: ready ? AppColors.auraLime : AppColors.boneDim,
                   size: 20,
                 ),
               ),
@@ -482,7 +454,7 @@ class _ReadinessItem extends StatelessWidget {
                       title,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
-                        color: AppColors.ink,
+                        color: AppColors.bone,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -498,13 +470,14 @@ class _ReadinessItem extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.sage.withValues(alpha: 0.18),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.line),
                   ),
                   child: const Text(
                     'Ready',
                     style: TextStyle(
-                      color: AppColors.darkWine,
+                      color: AppColors.bone,
                       fontWeight: FontWeight.w900,
                       fontSize: 12,
                     ),
