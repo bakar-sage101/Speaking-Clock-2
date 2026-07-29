@@ -129,4 +129,28 @@ class ReminderDraft {
   final ToneOption tone;
   final String spokenMessage;
   final int snoozeMinutes;
+
+  Map<String, Object?> toMap() => {
+    'title': title,
+    'type': type.index,
+    'deliveryMode': deliveryMode.name,
+    'repeatRule': repeatRule,
+    'tone': tone.name,
+    'spokenMessage': spokenMessage,
+    'snoozeMinutes': snoozeMinutes,
+  };
+
+  factory ReminderDraft.fromMap(Map<String, Object?> map) => ReminderDraft(
+    title: map['title'] as String? ?? 'Reminder',
+    type: _enumValue(
+      ReminderType.values,
+      (map['type'] as num?)?.toInt() ?? ReminderType.custom.index,
+      ReminderType.custom,
+    ),
+    deliveryMode: _deliveryModeFromName(map['deliveryMode'] as String? ?? 'gentle'),
+    repeatRule: map['repeatRule'] as String? ?? 'Every day',
+    tone: _toneFromName(map['tone'] as String? ?? 'softChime'),
+    spokenMessage: map['spokenMessage'] as String? ?? '',
+    snoozeMinutes: (map['snoozeMinutes'] as num?)?.toInt() ?? 10,
+  );
 }

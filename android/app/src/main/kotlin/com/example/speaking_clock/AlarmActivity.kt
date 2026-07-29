@@ -68,13 +68,14 @@ class AlarmActivity : Activity() {
     }
 
     private fun createContentView(): LinearLayout {
-        val ink = Color.rgb(10, 10, 10)
+        val ink = Color.rgb(11, 12, 16)
         val surfaceGlass = Color.argb(18, 255, 255, 255)
-        val line = Color.argb(24, 255, 255, 255)
-        val bone = Color.WHITE
-        val boneDim = Color.argb(158, 255, 255, 255)
-        val destructive = Color.rgb(217, 119, 87)
-        val aura = if (spoken) Color.rgb(232, 90, 155) else Color.rgb(232, 140, 120)
+        val line = Color.argb(28, 255, 255, 255)
+        val bone = Color.rgb(236, 234, 227)
+        val boneDim = Color.argb(158, 236, 234, 227)
+        val destructive = Color.rgb(240, 115, 90)
+        val brass = Color.rgb(220, 182, 94)
+        val aura = if (spoken) Color.rgb(165, 136, 230) else Color.rgb(240, 115, 90)
         val alarmVolumeMuted = !AlarmReadiness.isAlarmVolumeAudible(this)
 
         window.statusBarColor = ink
@@ -135,10 +136,10 @@ class AlarmActivity : Activity() {
         content.addView(
             TextView(this).apply {
                 text = mode.uppercase(Locale.getDefault())
-                textSize = 13f
-                typeface = Typeface.DEFAULT_BOLD
-                letterSpacing = 0.12f
-                setTextColor(bone)
+                textSize = 12f
+                typeface = Typeface.MONOSPACE
+                letterSpacing = 0.18f
+                setTextColor(brass)
                 gravity = Gravity.CENTER
                 setPadding(dp(14), dp(8), dp(14), dp(8))
                 background = rounded(surfaceGlass, 18, line, 1)
@@ -170,6 +171,7 @@ class AlarmActivity : Activity() {
                 TextView(this).apply {
                     text = spokenMessage.ifBlank { "It is time for $title" }
                     textSize = 18f
+                    typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
                     setTextColor(boneDim)
                     gravity = Gravity.CENTER
                     setPadding(0, dp(16), 0, 0)
@@ -278,12 +280,12 @@ class AlarmActivity : Activity() {
             shape = GradientDrawable.RECTANGLE
             gradientType = GradientDrawable.RADIAL_GRADIENT
             colors = intArrayOf(
-                Color.argb(220, Color.red(aura), Color.green(aura), Color.blue(aura)),
-                Color.argb(88, Color.red(aura), Color.green(aura), Color.blue(aura)),
-                Color.rgb(10, 10, 10),
+                Color.argb(150, Color.red(aura), Color.green(aura), Color.blue(aura)),
+                Color.argb(48, Color.red(aura), Color.green(aura), Color.blue(aura)),
+                Color.rgb(11, 12, 16),
             )
-            gradientRadius = dp(460).toFloat()
-            setGradientCenter(0.46f, 0.42f)
+            gradientRadius = dp(430).toFloat()
+            setGradientCenter(0.5f, 0.32f)
         }
     }
 

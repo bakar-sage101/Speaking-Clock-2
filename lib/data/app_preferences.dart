@@ -9,6 +9,7 @@ class AppPreferences {
 
   static const _fileName = 'speaking_clock_preferences.json';
   static const _onboardingCompleteKey = 'onboardingComplete';
+  static const _userTemplatesKey = 'userTemplates';
 
   static bool get _isTestEnvironment =>
       Platform.environment.containsKey('FLUTTER_TEST');
@@ -23,6 +24,26 @@ class AppPreferences {
     if (_isTestEnvironment) return;
     final values = await _readValues();
     values[_onboardingCompleteKey] = complete;
+    await _writeValues(values);
+  }
+
+  static Future<List<Map<String, Object?>>> getUserTemplates() async {
+    if (_isTestEnvironment) return [];
+    final values = await _readValues();
+    final raw = values[_userTemplatesKey];
+    if (raw is List) {
+      return raw
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry('$k', v)))
+          .toList();
+    }
+    return [];
+  }
+
+  static Future<void> saveUserTemplates(List<Map<String, Object?>> templates) async {
+    if (_isTestEnvironment) return;
+    final values = await _readValues();
+    values[_userTemplatesKey] = templates;
     await _writeValues(values);
   }
 

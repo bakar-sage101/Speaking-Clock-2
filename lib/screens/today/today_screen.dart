@@ -19,9 +19,12 @@ class TodayScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final next = reminders.isEmpty ? null : reminders.first;
+    final rest = reminders.where((r) => r.id != next?.id).toList();
     final warnings = _readinessWarnings(readiness);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 112),
+    return Stack(
+      children: [
+        ListView(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 130),
       children: [
         _TodayHeader(readiness: readiness),
         if (warnings.isNotEmpty) ...[
@@ -29,32 +32,48 @@ class TodayScreen extends StatelessWidget {
           PermissionWarningCard(messages: warnings, onReview: onOpenReliability),
         ],
         const SizedBox(height: 8),
-        TodayDial(reminders: reminders),
-        const SizedBox(height: 22),
+        TodayDial(reminders: reminders, onAdd: onAdd),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            'TAP THE CLOCK TO ADD A REMINDER',
+            style: _mono(size: 8.5, color: AppColors.boneDim, spacing: 1.6),
+          ),
+        ),
+        const SizedBox(height: 18),
         if (next == null)
           EmptyReminderCard(onAdd: onAdd)
         else
-          _NextCard(reminder: next, onOpen: () => onOpenReminder(next)),
+          _FolderReminderCard(
+            reminder: next,
+            big: true,
+            onTap: () => onOpenReminder(next),
+          ),
         const SizedBox(height: 26),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('REST OF TODAY', style: _mono(size: 10, color: AppColors.boneDim)),
+            Text('REST OF TODAY', style: _mono(size: 10, color: AppColors.wine)),
             Text(
               '${reminders.length} planned',
-              style: _mono(size: 10, color: AppColors.boneDim, spacing: 0.4),
+              style: _mono(size: 10, color: AppColors.wine, spacing: 0.4),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        for (final reminder in reminders)
-          _ScheduleRow(
-            reminder: reminder,
-            isNext: reminder.id == next?.id,
-            onTap: () => onOpenReminder(reminder),
+        const SizedBox(height: 12),
+        for (final reminder in rest)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _FolderReminderCard(
+              reminder: reminder,
+              big: false,
+              onTap: () => onOpenReminder(reminder),
+            ),
           ),
         const SizedBox(height: 20),
         const ReliabilityNote(),
+      ],
+        ),
       ],
     );
   }
@@ -102,9 +121,10 @@ class _TodayHeader extends StatelessWidget {
 /// A live analog dial: real hands, brass indices, and reminder markers on the
 /// rim coloured by intensity — the next one wears a brass ring.
 class TodayDial extends StatefulWidget {
-  const TodayDial({super.key, required this.reminders});
+  const TodayDial({super.key, required this.reminders, this.onAdd});
 
   final List<Reminder> reminders;
+  final VoidCallback? onAdd;
 
   @override
   State<TodayDial> createState() => _TodayDialState();
@@ -131,14 +151,47 @@ class _TodayDialState extends State<TodayDial> {
   Widget build(BuildContext context) {
     final nextId = widget.reminders.isEmpty ? null : widget.reminders.first.id;
     return Center(
-      child: SizedBox(
-        width: 236,
-        height: 236,
-        child: CustomPaint(
-          painter: _DialPainter(
-            reminders: widget.reminders,
-            nextId: nextId,
-            now: DateTime.now(),
+      child: GestureDetector(
+        onTap: widget.onAdd,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: 236,
+          height: 236,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _DialPainter(
+                    reminders: widget.reminders,
+                    nextId: nextId,
+                    now: DateTime.now(),
+                  ),
+                ),
+              ),
+              if (widget.onAdd != null)
+                Positioned(
+                  right: 2,
+                  bottom: 30,
+                  child: Container(
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.brass,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.ink, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.brass.withValues(alpha: 0.5),
+                          blurRadius: 14,
+                          spreadRadius: -2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add_rounded, color: AppColors.onBrass, size: 24),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -302,197 +355,172 @@ class _DialPainter extends CustomPainter {
   bool shouldRepaint(covariant _DialPainter oldDelegate) => true;
 }
 
-class _NextCard extends StatelessWidget {
-  const _NextCard({required this.reminder, required this.onOpen});
+class _FolderReminderCard extends StatelessWidget {
+  const _FolderReminderCard({
+    required this.reminder,
+    required this.big,
+    required this.onTap,
+  });
 
   final Reminder reminder;
-  final VoidCallback onOpen;
+  final bool big;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final light = Theme.of(context).brightness == Brightness.light;
     final color = _intensityColor(reminder.deliveryMode);
-    final (value, unit) = _countdown(reminder);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.line),
-            boxShadow: [_softLiftedShadow(opacity: 0.22, blurRadius: 22)],
+    final enabled = reminder.enabled;
+    final base = enabled ? color : AppColors.boneDim;
+    final onCover = ThemeData.estimateBrightnessForColor(base) == Brightness.dark
+        ? Colors.white
+        : const Color(0xff211E1A);
+    final (value, unit) = _countdownParts(reminder);
+    final countdownText = value == 'now'
+        ? 'NOW'
+        : unit.isEmpty
+        ? value.toUpperCase()
+        : 'IN $value $unit'.toUpperCase();
+    final timeParts = reminder.time.split(' ');
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(big ? 20 : 18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(base, Colors.white, 0.22)!,
+              base,
+              Color.lerp(base, Colors.black, 0.12)!,
+            ],
+            stops: const [0.0, 0.55, 1.0],
           ),
-          child: Row(
-            children: [
-              Container(
-                height: 46,
-                width: 46,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Center(
-                  child: CustomReminderIcon(
-                    icon: _iconForType(reminder.type),
-                    color: color,
-                    size: 22,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: AppColors.line),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: light ? 0.08 : 0.30),
+              blurRadius: 22,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _deliveryLabel(reminder.deliveryMode).toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _mono(size: 9, color: onCover, spacing: 1.4),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: onCover.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              countdownText,
+                              style: _mono(size: 8, color: onCover, spacing: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      Text(
+                        reminder.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _serif(size: big ? 23 : 20, color: onCover, height: 1.05),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_label(reminder.type)} · ${_repeatRule(reminder)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _mono(size: 10, color: onCover.withValues(alpha: 0.62), spacing: 0.2),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'NEXT · ${_deliveryShortLabel(reminder.deliveryMode).toUpperCase()}',
-                      style: _mono(size: 9.5, color: color, spacing: 1.8),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      reminder.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _serif(size: 18, color: AppColors.bone, height: 1.1),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${reminder.time} · ${_repeatRule(reminder)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _mono(size: 10, color: AppColors.boneDim, spacing: 0.4),
-                    ),
-                  ],
+                const SizedBox(width: 12),
+                Icon(
+                  _cardIcon(reminder.type),
+                  color: onCover,
+                  size: big ? 34 : 30,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    value,
+              ],
+            ),
+            SizedBox(height: big ? 18 : 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    text: timeParts.first,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: big ? 40 : 34,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.bone,
-                      letterSpacing: -0.5,
+                      color: onCover,
+                      letterSpacing: -1,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                  ),
-                  Text(unit, style: _mono(size: 9, color: AppColors.boneDim, spacing: 1.4)),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  (String, String) _countdown(Reminder reminder) {
-    final ms = reminder.triggerAtMillis;
-    if (!reminder.enabled) return ('—', 'paused');
-    if (ms == null) return ('—', '');
-    final diff = DateTime.fromMillisecondsSinceEpoch(ms).difference(now());
-    if (diff.isNegative) return ('now', '');
-    final mins = diff.inMinutes;
-    if (mins < 60) return ('$mins', 'min');
-    final hours = diff.inHours;
-    if (hours < 24) return ('$hours', 'hr');
-    return ('${diff.inDays}', 'day');
-  }
-
-  DateTime now() => DateTime.now();
-}
-
-class _ScheduleRow extends StatelessWidget {
-  const _ScheduleRow({required this.reminder, required this.isNext, this.onTap});
-
-  final Reminder reminder;
-  final bool isNext;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _intensityColor(reminder.deliveryMode);
-    final dim = !reminder.enabled;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: EdgeInsets.symmetric(
-            horizontal: isNext ? 12 : 4,
-            vertical: isNext ? 12 : 11,
-          ),
-          decoration: isNext
-              ? BoxDecoration(
-                  color: color.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: color.withValues(alpha: 0.24)),
-                )
-              : const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.line)),
-                ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 52,
-                child: Text(
-                  reminder.time,
-                  style: _mono(
-                    size: 12,
-                    color: dim ? AppColors.boneDim.withValues(alpha: 0.5) : AppColors.boneDim,
-                    spacing: 0.2,
+                    children: [
+                      if (timeParts.length > 1)
+                        TextSpan(
+                          text: ' ${timeParts[1]}',
+                          style: _mono(size: big ? 13 : 12, color: onCover.withValues(alpha: 0.62), spacing: 0.5),
+                        ),
+                    ],
                   ),
                 ),
-              ),
-              Container(
-                width: 3,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: dim ? AppColors.boneDim.withValues(alpha: 0.4) : color,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  reminder.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isNext ? FontWeight.w600 : FontWeight.w500,
-                    color: dim ? AppColors.boneDim : AppColors.bone,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.line2),
-                ),
-                child: Text(
-                  dim ? 'Paused' : _deliveryShortLabel(reminder.deliveryMode),
-                  style: _mono(size: 8.5, color: AppColors.boneDim, spacing: 1.0),
-                ),
-              ),
-            ],
-          ),
+                const Spacer(),
+                Icon(Icons.north_east_rounded, color: onCover, size: big ? 26 : 24),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+(String, String) _countdownParts(Reminder reminder) {
+  if (!reminder.enabled) return ('paused', '');
+  final ms = reminder.triggerAtMillis;
+  if (ms == null) return ('—', '');
+  final diff = DateTime.fromMillisecondsSinceEpoch(ms).difference(DateTime.now());
+  if (diff.isNegative) return ('now', '');
+  final mins = diff.inMinutes;
+  if (mins < 60) return ('$mins', 'min');
+  final hours = diff.inHours;
+  if (hours < 24) return ('$hours', 'hr');
+  return ('${diff.inDays}', 'day');
+}
+
+
+IconData _cardIcon(ReminderType type) => switch (type) {
+  ReminderType.water => Icons.water_drop_rounded,
+  ReminderType.breakTime => Icons.self_improvement_rounded,
+  ReminderType.meeting => Icons.videocam_rounded,
+  ReminderType.medication => Icons.medication_rounded,
+  ReminderType.custom => Icons.notifications_active_rounded,
+};
 
 SpeakingClockIcon _iconForType(ReminderType type) => switch (type) {
   ReminderType.water => SpeakingClockIcon.droplet,
@@ -524,7 +552,7 @@ class PermissionWarningCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: AppColors.alarm, size: 20),
+          Icon(Icons.warning_amber_rounded, color: AppColors.alarm, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -540,7 +568,7 @@ class PermissionWarningCard extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       '• $message',
-                      style: const TextStyle(height: 1.3, color: AppColors.boneDim, fontSize: 13),
+                      style: TextStyle(height: 1.3, color: AppColors.boneDim, fontSize: 13),
                     ),
                   ),
                 ),
@@ -579,7 +607,7 @@ class EmptyReminderCard extends StatelessWidget {
         children: [
           Text('Your day is quiet', style: _serif(size: 20, color: AppColors.bone)),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Create a gentle nudge, a full-screen alarm, or a spoken reminder when something matters.',
             style: TextStyle(color: AppColors.boneDim, height: 1.4, fontSize: 13.5),
           ),
@@ -607,9 +635,10 @@ class ReadinessChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.glass,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: AppColors.line),
+        boxShadow: [_softLiftedShadow(opacity: 0.05, blurRadius: 10)],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -664,7 +693,7 @@ class _TinyBadge extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.bone,
               fontWeight: FontWeight.w700,
               fontSize: 12,
@@ -728,7 +757,7 @@ class ReminderRow extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 reminder.time,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.bone),
+                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.bone),
               ),
               const SizedBox(width: 8),
               Container(width: 3, height: 26, decoration: BoxDecoration(
@@ -786,7 +815,7 @@ class ReliabilityNote extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.verified_user_outlined, color: AppColors.gentle, size: 20),
+          Icon(Icons.verified_user_outlined, color: AppColors.gentle, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

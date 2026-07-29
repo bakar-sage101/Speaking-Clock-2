@@ -4,7 +4,7 @@ TextStyle _sectionLabel(BuildContext context) =>
     Theme.of(context).textTheme.labelMedium!.copyWith(
       letterSpacing: 1.2,
       fontWeight: FontWeight.w800,
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      color: AppColors.wine,
     );
 TextStyle _subtle(BuildContext context, {bool small = false}) =>
     (small
@@ -43,6 +43,18 @@ TextStyle _mono({
   letterSpacing: spacing,
   fontWeight: weight,
 );
+
+/// A solid card fill derived from an intensity colour — a soft pastel in light
+/// mode, a subtly-tinted dark surface in dark mode.
+Color _fillFor(Color intensity) => AppColors.brightness == Brightness.light
+    ? Color.lerp(intensity, Colors.white, 0.48)!
+    : Color.lerp(intensity, AppColors.surface, 0.82)!;
+
+/// Deepened, high-contrast version of an intensity colour for text/icons that
+/// sit on a [_fillFor] pastel header in light mode.
+Color _onFill(Color intensity) => AppColors.brightness == Brightness.light
+    ? Color.lerp(intensity, Colors.black, 0.34)!
+    : intensity;
 
 List<Shadow> _softTextShadow({double opacity = 0.28, double blurRadius = 9}) {
   return [
@@ -83,7 +95,7 @@ class AuraSpec {
 }
 
 AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
-  AuraHue.magenta => const AuraSpec(
+  AuraHue.magenta => AuraSpec(
     dominant: AppColors.auraMagenta,
     edge: AppColors.auraBlue,
     center: Alignment(-0.1, 0.15),
@@ -91,7 +103,7 @@ AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
     dominantOpacity: 0.85,
     edgeOpacity: 0.28,
   ),
-  AuraHue.blue => const AuraSpec(
+  AuraHue.blue => AuraSpec(
     dominant: AppColors.auraBlue,
     edge: AppColors.auraMagenta,
     center: Alignment(0.0, 0.0),
@@ -99,7 +111,7 @@ AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
     dominantOpacity: 0.85,
     edgeOpacity: 0.25,
   ),
-  AuraHue.coral => const AuraSpec(
+  AuraHue.coral => AuraSpec(
     dominant: AppColors.auraCoral,
     edge: AppColors.auraLime,
     center: Alignment(0.0, 0.0),
@@ -107,7 +119,7 @@ AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
     dominantOpacity: 0.80,
     edgeOpacity: 0.22,
   ),
-  AuraHue.lime => const AuraSpec(
+  AuraHue.lime => AuraSpec(
     dominant: AppColors.auraLime,
     edge: AppColors.auraBlue,
     center: Alignment(-0.2, 0.0),
@@ -117,11 +129,6 @@ AuraSpec _auraSpec(AuraHue hue) => switch (hue) {
   ),
 };
 
-AuraHue _auraForDelivery(DeliveryMode mode) => switch (mode) {
-  DeliveryMode.gentle => AuraHue.lime,
-  DeliveryMode.alarm => AuraHue.coral,
-  DeliveryMode.speaking => AuraHue.magenta,
-};
 
 class SoftPanel extends StatelessWidget {
   const SoftPanel({
@@ -132,7 +139,7 @@ class SoftPanel extends StatelessWidget {
     this.gradient,
     this.borderColor,
     this.shadowOpacity = 0.025,
-    this.backgroundColor = AppColors.glass,
+    this.backgroundColor,
   });
 
   final Widget child;
@@ -141,7 +148,7 @@ class SoftPanel extends StatelessWidget {
   final Gradient? gradient;
   final Color? borderColor;
   final double shadowOpacity;
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +156,7 @@ class SoftPanel extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: backgroundColor ?? AppColors.glass,
         gradient: gradient,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
@@ -233,7 +240,7 @@ class AuraPanel extends StatelessWidget {
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: AppColors.ink,
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(radius),
               ),
             ),
@@ -243,13 +250,13 @@ class AuraPanel extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: spec.center,
-                  radius: 0.95,
+                  radius: 1.0,
                   colors: [
-                    spec.dominant.withValues(alpha: spec.dominantOpacity),
-                    spec.dominant.withValues(alpha: 0.30),
+                    spec.dominant.withValues(alpha: 0.16),
+                    spec.dominant.withValues(alpha: 0.045),
                     Colors.transparent,
                   ],
-                  stops: const [0.0, 0.32, 0.65],
+                  stops: const [0.0, 0.42, 0.85],
                 ),
               ),
             ),
@@ -261,10 +268,10 @@ class AuraPanel extends StatelessWidget {
                   center: spec.edgeCenter,
                   radius: 1.2,
                   colors: [
-                    spec.edge.withValues(alpha: spec.edgeOpacity),
+                    spec.edge.withValues(alpha: 0.07),
                     Colors.transparent,
                   ],
-                  stops: const [0.0, 0.45],
+                  stops: const [0.0, 0.5],
                 ),
               ),
             ),

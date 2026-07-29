@@ -158,7 +158,7 @@ class _OnboardingAuraBackground extends StatelessWidget {
     };
     return Stack(
       children: [
-        const Positioned.fill(child: ColoredBox(color: AppColors.ink)),
+        Positioned.fill(child: ColoredBox(color: AppColors.ink)),
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -166,11 +166,11 @@ class _OnboardingAuraBackground extends StatelessWidget {
                 center: center,
                 radius: 0.9,
                 colors: [
-                  dominant.withValues(alpha: page == 2 ? 0.62 : 0.72),
-                  dominant.withValues(alpha: 0.28),
+                  dominant.withValues(alpha: 0.16),
+                  dominant.withValues(alpha: 0.05),
                   Colors.transparent,
                 ],
-                stops: const [0.0, 0.38, 0.72],
+                stops: const [0.0, 0.4, 0.8],
               ),
             ),
           ),
@@ -181,7 +181,7 @@ class _OnboardingAuraBackground extends StatelessWidget {
               gradient: RadialGradient(
                 center: const Alignment(0.92, -0.82),
                 radius: 1.1,
-                colors: [edge.withValues(alpha: 0.22), Colors.transparent],
+                colors: [edge.withValues(alpha: 0.08), Colors.transparent],
                 stops: const [0.0, 0.48],
               ),
             ),
@@ -229,8 +229,8 @@ class _OnboardingProgressLine extends StatelessWidget {
             margin: EdgeInsets.only(right: index == count - 1 ? 0 : 6),
             decoration: BoxDecoration(
               color: active
-                  ? AppColors.bone
-                  : AppColors.bone.withValues(alpha: 0.22),
+                  ? AppColors.brass
+                  : AppColors.bone.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(99),
             ),
           ),
@@ -248,25 +248,14 @@ class _WelcomeOnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OnboardingShell(
-      top: const Text(
-        'S P E A K I N G',
-        style: TextStyle(
-          color: AppColors.boneDim,
-          fontSize: 11,
-          letterSpacing: 6,
-          fontWeight: FontWeight.w800,
-        ),
+      top: Text(
+        'SPEAKING CLOCK',
+        style: _mono(size: 10, color: AppColors.boneDim, spacing: 4),
       ),
-      title: 'Clock',
-      body: 'A calm companion for the things that matter.',
-      art: const _HeroIconBubble(
-        icon: SpeakingClockIcon.bell,
-        color: AppColors.linen,
-        gradient: AppColors.signatureHeroGradient,
-        size: 152,
-        iconSize: 76,
-      ),
-      primaryLabel: 'Next',
+      title: 'A clock that speaks up when you go too deep.',
+      body: 'Water, breaks, medication, meetings — reached gently, or impossible to ignore. You choose, per reminder.',
+      art: const _DialMark(size: 150),
+      primaryLabel: 'Begin setup',
       onPrimary: onNext,
     );
   }
@@ -282,27 +271,27 @@ class _IntensitiesOnboardingPage extends StatelessWidget {
     return _OnboardingShell(
       title: 'Reminder intensities',
       body: 'Three ways to reach you, depending on what matters.',
-      content: const Column(
+      content: Column(
         children: [
           _IntensityTile(
-            icon: SpeakingClockIcon.droplet,
+            icon: Icons.notifications_none_rounded,
             title: 'Gentle reminder',
             body: 'A soft notification to nudge you.',
-            color: AppColors.darkWine,
+            color: AppColors.gentle,
           ),
           SizedBox(height: 12),
           _IntensityTile(
-            icon: SpeakingClockIcon.bell,
+            icon: Icons.alarm_rounded,
             title: 'Alarm reminder',
             body: 'A reliable alarm to get your attention.',
-            color: AppColors.darkWine,
+            color: AppColors.alarm,
           ),
           SizedBox(height: 12),
           _IntensityTile(
-            icon: SpeakingClockIcon.speaker,
+            icon: Icons.record_voice_over_rounded,
             title: 'Speaking reminder',
             body: 'An alarm that speaks a message aloud.',
-            color: AppColors.darkWine,
+            color: AppColors.speaking,
           ),
         ],
       ),
@@ -404,13 +393,7 @@ class _ReadyOnboardingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OnboardingShell(
-      art: const _HeroIconBubble(
-        icon: SpeakingClockIcon.shield,
-        color: Colors.white,
-        gradient: AppColors.signatureHeroGradient,
-        size: 128,
-        iconSize: 58,
-      ),
+      art: const _DialMark(size: 128),
       title: 'You are ready!',
       body: 'We’ll keep everything running smoothly in the background.',
       content: Text(
@@ -465,22 +448,16 @@ class _OnboardingShell extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      color: AppColors.bone,
-                      fontWeight: FontWeight.w500,
-                      fontStyle: FontStyle.italic,
-                      letterSpacing: -0.8,
-                      shadows: _softTextShadow(opacity: 0.35, blurRadius: 14),
-                    ),
+                    style: _serif(size: 32, color: AppColors.bone, height: 1.05),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   Text(
                     body,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    style: TextStyle(
                       color: AppColors.boneDim,
                       height: 1.45,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.5,
                     ),
                   ),
                   if (art != null) ...[const SizedBox(height: 34), art!],
@@ -511,37 +488,76 @@ class _OnboardingShell extends StatelessWidget {
   }
 }
 
-class _HeroIconBubble extends StatelessWidget {
-  const _HeroIconBubble({
-    required this.icon,
-    required this.color,
-    required this.gradient,
-    required this.size,
-    required this.iconSize,
-  });
+class _DialMark extends StatelessWidget {
+  const _DialMark({required this.size});
 
-  final SpeakingClockIcon icon;
-  final Color color;
-  final Gradient gradient;
   final double size;
-  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    return AuraPanel(
-      hue: AuraHue.magenta,
-      padding: EdgeInsets.zero,
-      radius: size / 2,
-      showGrain: true,
-      child: SizedBox(
-        height: size,
-        width: size,
-        child: Center(
-          child: CustomReminderIcon(icon: icon, color: color, size: iconSize),
-        ),
-      ),
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _DialMarkPainter()),
     );
   }
+}
+
+class _DialMarkPainter extends CustomPainter {
+  Offset _polar(Offset c, double r, double deg) {
+    final rad = deg * math.pi / 180;
+    return Offset(c.dx + r * math.sin(rad), c.dy - r * math.cos(rad));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2 - 2;
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment(0, -0.2),
+          radius: 0.95,
+          colors: [AppColors.surfaceRaised, AppColors.surface],
+        ).createShader(Rect.fromCircle(center: center, radius: r)),
+    );
+    canvas.drawCircle(
+      center,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = AppColors.line2,
+    );
+    final hourTick = Paint()
+      ..color = AppColors.brass
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 12; i++) {
+      final deg = i * 30.0;
+      canvas.drawLine(_polar(center, r - 11, deg), _polar(center, r - 5, deg), hourTick);
+    }
+    _hand(canvas, center, 300, r * 0.48, 3.4, AppColors.bone);
+    _hand(canvas, center, 66, r * 0.70, 2.4, AppColors.brass);
+    canvas.drawCircle(center, 4.5, Paint()..color = AppColors.brass);
+    canvas.drawCircle(center, 1.6, Paint()..color = AppColors.ink);
+  }
+
+  void _hand(Canvas canvas, Offset center, double deg, double len, double w, Color col) {
+    canvas.drawLine(
+      center,
+      _polar(center, len, deg),
+      Paint()
+        ..color = col
+        ..strokeWidth = w
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _DialMarkPainter oldDelegate) => false;
 }
 
 class _IntensityTile extends StatelessWidget {
@@ -552,55 +568,53 @@ class _IntensityTile extends StatelessWidget {
     required this.color,
   });
 
-  final SpeakingClockIcon icon;
+  final IconData icon;
   final String title;
   final String body;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            height: 54,
-            width: 54,
+            height: 44,
+            width: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.line),
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(13),
             ),
-            child: Center(
-              child: CustomReminderIcon(
-                icon: icon,
-                color: AppColors.bone,
-                size: 28,
-              ),
-            ),
+            child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.bone,
                     fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                    height: 1.05,
+                    fontSize: 16,
+                    height: 1.1,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 Text(
                   body,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.boneDim,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
+                    fontSize: 12.5,
+                    height: 1.3,
                   ),
                 ),
               ],
@@ -632,73 +646,78 @@ class _ReliableFeatureRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.line),
+          ),
           child: Row(
             children: [
               Container(
-                height: 44,
-                width: 44,
+                height: 38,
+                width: 38,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: ready ? 0.12 : 0.07),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.line),
+                  color: ready
+                      ? AppColors.gentle.withValues(alpha: 0.15)
+                      : AppColors.surfaceRaised,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: CustomReminderIcon(
                     icon: icon,
-                    color: ready ? AppColors.bone : AppColors.boneDim,
-                    size: 22,
+                    color: ready ? AppColors.gentle : AppColors.boneDim,
+                    size: 20,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
                         color: AppColors.bone,
+                        fontSize: 13.5,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(body, style: _subtle(context, small: true)),
+                    const SizedBox(height: 1),
+                    Text(body, style: TextStyle(color: AppColors.boneDim, fontSize: 11.5)),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               if (ready)
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_rounded, color: AppColors.bone, size: 15),
-                    SizedBox(width: 4),
-                    Text(
-                      'Allowed',
-                      style: TextStyle(
-                        color: AppColors.bone,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: AppColors.gentle.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    'On',
+                    style: _mono(size: 10, color: AppColors.gentle, spacing: 1),
+                  ),
                 )
               else
-                TextButton(
-                  onPressed: onTap,
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.bone,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size(0, 36),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: AppColors.brass,
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  child: Text(actionLabel),
+                  child: Text(
+                    actionLabel,
+                    style: _mono(size: 10, color: const Color(0xff1A1205), spacing: 0.8),
+                  ),
                 ),
             ],
           ),

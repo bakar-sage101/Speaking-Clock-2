@@ -6,11 +6,13 @@ class ReminderEditor extends StatefulWidget {
     required this.initialType,
     this.reminder,
     this.draft,
+    this.asTemplate = false,
   });
 
   final ReminderType initialType;
   final Reminder? reminder;
   final ReminderDraft? draft;
+  final bool asTemplate;
 
   @override
   State<ReminderEditor> createState() => _ReminderEditorState();
@@ -107,7 +109,7 @@ class _ReminderEditorState extends State<ReminderEditor> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
+            colorScheme: ColorScheme.dark(
               primary: AppColors.brass,
               onPrimary: Color(0xff1A1205),
               surface: AppColors.surfaceRaised,
@@ -298,7 +300,7 @@ class _ReminderEditorState extends State<ReminderEditor> {
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
               border: Border(top: BorderSide(color: AppColors.line)),
@@ -382,7 +384,11 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   ),
                   Expanded(
                     child: Text(
-                      editing ? 'Edit reminder' : 'New reminder',
+                      widget.asTemplate
+                          ? 'New template'
+                          : editing
+                          ? 'Edit reminder'
+                          : 'New reminder',
                       textAlign: TextAlign.center,
                       style: _serif(size: 18, color: AppColors.bone),
                     ),
@@ -390,10 +396,10 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   TextButton(
                     onPressed: _canSave ? _save : null,
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.brass,
+                      foregroundColor: AppColors.gentle,
                       disabledForegroundColor: AppColors.boneDim.withValues(alpha: 0.4),
                     ),
-                    child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w800)),
+                    child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w900)),
                   ),
                 ],
               ),
@@ -421,11 +427,7 @@ class _ReminderEditorState extends State<ReminderEditor> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Center(
-                        child: CustomReminderIcon(
-                          icon: _categoryIcon(_type),
-                          color: color,
-                          size: 22,
-                        ),
+                        child: Icon(_cardIcon(_type), color: color, size: 24),
                       ),
                     ),
                     const SizedBox(width: 13),
@@ -463,7 +465,7 @@ class _ReminderEditorState extends State<ReminderEditor> {
                 autofocus: !editing,
                 onChanged: (_) => setState(() {}),
                 cursorColor: AppColors.brass,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.bone,
                   fontWeight: FontWeight.w600,
                   fontSize: 19,
@@ -475,10 +477,10 @@ class _ReminderEditorState extends State<ReminderEditor> {
                   hintText: 'Drink water',
                   hintStyle: TextStyle(color: AppColors.boneDim.withValues(alpha: 0.6)),
                   contentPadding: const EdgeInsets.only(bottom: 9, top: 2),
-                  enabledBorder: const UnderlineInputBorder(
+                  enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppColors.line2),
                   ),
-                  focusedBorder: const UnderlineInputBorder(
+                  focusedBorder: UnderlineInputBorder(
                     borderSide: BorderSide(color: AppColors.brass, width: 1.4),
                   ),
                 ),
@@ -507,55 +509,80 @@ class _ReminderEditorState extends State<ReminderEditor> {
               ),
               // details grid
               _label('DETAILS'),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DetailTile(
-                      icon: Icons.schedule_rounded,
-                      label: 'WHEN',
-                      value: _formatTime12(_time),
-                      sub: _firesToday ? 'today' : 'tomorrow',
-                      onTap: _pickTime,
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: _DetailTile(
-                      icon: Icons.repeat_rounded,
-                      label: 'REPEAT',
-                      value: _frequency == 'Custom minutes'
-                          ? 'Every $_customRepeatMinutes'
-                          : _frequency,
-                      sub: _frequency == 'Custom minutes' ? 'min' : null,
-                      onTap: _openRepeat,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: _DetailTile(
-                      icon: Icons.music_note_rounded,
-                      label: 'TONE',
-                      value: _toneLabel(_tone),
-                      onTap: _openTone,
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: _DetailTile(
-                      icon: _deliveryMode == DeliveryMode.gentle
-                          ? Icons.more_time_rounded
-                          : Icons.snooze_rounded,
-                      label: _deliveryMode == DeliveryMode.gentle ? 'REMIND' : 'SNOOZE',
-                      value: '$_snoozeMinutes',
-                      sub: 'min',
-                      onTap: _openSnooze,
-                    ),
-                  ),
-                ],
+              Builder(
+                builder: (context) {
+                  final whenTile = _DetailTile(
+                    icon: Icons.schedule_rounded,
+                    label: 'WHEN',
+                    value: _formatTime12(_time),
+                    sub: _firesToday ? 'today' : 'tomorrow',
+                    onTap: _pickTime,
+                  );
+                  final repeatTile = _DetailTile(
+                    icon: Icons.repeat_rounded,
+                    label: 'REPEAT',
+                    value: _frequency == 'Custom minutes'
+                        ? 'Every $_customRepeatMinutes'
+                        : _frequency,
+                    sub: _frequency == 'Custom minutes' ? 'min' : null,
+                    onTap: _openRepeat,
+                  );
+                  final toneTile = _DetailTile(
+                    icon: Icons.music_note_rounded,
+                    label: 'TONE',
+                    value: _toneLabel(_tone),
+                    onTap: _openTone,
+                  );
+                  final snoozeTile = _DetailTile(
+                    icon: _deliveryMode == DeliveryMode.gentle
+                        ? Icons.more_time_rounded
+                        : Icons.snooze_rounded,
+                    label: _deliveryMode == DeliveryMode.gentle ? 'REMIND' : 'SNOOZE',
+                    value: '$_snoozeMinutes',
+                    sub: 'min',
+                    onTap: _openSnooze,
+                  );
+                  if (widget.asTemplate) {
+                    return Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: repeatTile),
+                            const SizedBox(width: 9),
+                            Expanded(child: toneTile),
+                          ],
+                        ),
+                        const SizedBox(height: 9),
+                        Row(
+                          children: [
+                            Expanded(child: snoozeTile),
+                            const SizedBox(width: 9),
+                            const Expanded(child: SizedBox.shrink()),
+                          ],
+                        ),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: whenTile),
+                          const SizedBox(width: 9),
+                          Expanded(child: repeatTile),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          Expanded(child: toneTile),
+                          const SizedBox(width: 9),
+                          Expanded(child: snoozeTile),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
               // spoken message
               if (_deliveryMode == DeliveryMode.speaking) ...[
@@ -586,15 +613,15 @@ class _ReminderEditorState extends State<ReminderEditor> {
                     helperStyle: _mono(size: 9.5, color: AppColors.boneDim, spacing: 0.2),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.line2),
+                      borderSide: BorderSide(color: AppColors.line2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.line2),
+                      borderSide: BorderSide(color: AppColors.line2),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.speaking, width: 1.3),
+                      borderSide: BorderSide(color: AppColors.speaking, width: 1.3),
                     ),
                   ),
                 ),
@@ -663,14 +690,6 @@ String _deliveryDescription(DeliveryMode mode) => switch (mode) {
   DeliveryMode.speaking => 'Speaking — speaks your words, then rings.',
 };
 
-SpeakingClockIcon _categoryIcon(ReminderType type) => switch (type) {
-  ReminderType.water => SpeakingClockIcon.droplet,
-  ReminderType.breakTime => SpeakingClockIcon.stretch,
-  ReminderType.meeting => SpeakingClockIcon.calendar,
-  ReminderType.medication => SpeakingClockIcon.pill,
-  ReminderType.custom => SpeakingClockIcon.target,
-};
-
 class _Segment extends StatelessWidget {
   const _Segment({required this.mode, required this.selected, required this.onTap});
 
@@ -706,10 +725,10 @@ class _Segment extends StatelessWidget {
               height: 36,
               width: 36,
               decoration: BoxDecoration(
-                color: selected ? color.withValues(alpha: 0.18) : AppColors.surfaceRaised,
+                color: color.withValues(alpha: selected ? 0.22 : 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, size: 19, color: selected ? color : AppColors.boneDim),
+              child: Icon(icon, size: 19, color: color),
             ),
             const SizedBox(height: 8),
             Text(
@@ -763,7 +782,7 @@ class _DetailTile extends StatelessWidget {
                 const SizedBox(width: 7),
                 Text(label, style: _mono(size: 8.5, color: AppColors.boneDim, spacing: 1.4)),
                 const Spacer(),
-                const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.boneDim),
+                Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.boneDim),
               ],
             ),
             const SizedBox(height: 8),
@@ -772,7 +791,7 @@ class _DetailTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               text: TextSpan(
                 text: value,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.bone,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
@@ -818,10 +837,10 @@ class _CatChip extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CustomReminderIcon(
-              icon: _categoryIcon(type),
+            Icon(
+              _cardIcon(type),
               color: selected ? AppColors.brass : AppColors.boneDim,
-              size: 20,
+              size: 22,
             ),
             const SizedBox(height: 6),
             Text(
@@ -863,7 +882,7 @@ class _SheetOption extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.line)),
         ),
         child: Row(
@@ -884,7 +903,7 @@ class _SheetOption extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.bone,
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -972,12 +991,12 @@ class _Stepper extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 62),
             padding: const EdgeInsets.symmetric(vertical: 8),
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border.symmetric(vertical: BorderSide(color: AppColors.line)),
             ),
             child: Text(
               '$value $suffix',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.bone,
                 fontWeight: FontWeight.w700,
                 fontFeatures: [FontFeature.tabularFigures()],
@@ -994,7 +1013,7 @@ class _Stepper extends StatelessWidget {
     onTap: onTap,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-      child: Text(glyph, style: const TextStyle(color: AppColors.brass, fontSize: 18)),
+      child: Text(glyph, style: TextStyle(color: AppColors.brass, fontSize: 18)),
     ),
   );
 }

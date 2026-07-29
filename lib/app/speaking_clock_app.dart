@@ -13,9 +13,10 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   late final AppDatabase _database;
   var _tab = 0;
-  var _darkMode = false;
+  var _darkMode = true;
   bool? _onboardingComplete;
   AlarmReadiness? _readiness;
+  List<ReminderDraft> _userTemplates = [];
   List<Reminder> _reminders = [
     const Reminder(
       id: 'water-1030',
@@ -50,7 +51,43 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
     _database = AppDatabase.open();
     _loadOnboardingState();
     _loadReminders();
+    _loadTemplates();
     _refreshReadiness();
+  }
+
+  Future<void> _loadTemplates() async {
+    final maps = await AppPreferences.getUserTemplates();
+    if (!mounted) return;
+    setState(() => _userTemplates = maps.map(ReminderDraft.fromMap).toList());
+  }
+
+  Future<void> _addTemplate() async {
+    final result = await showModalBottomSheet<Reminder>(
+      context: _navigatorKey.currentState!.context,
+      isScrollControlled: true,
+      enableDrag: true,
+      isDismissible: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.88,
+        alignment: Alignment.bottomCenter,
+        child: ReminderEditor(initialType: ReminderType.custom, asTemplate: true),
+      ),
+    );
+    if (result == null) return;
+    final draft = ReminderDraft(
+      title: result.title,
+      type: result.type,
+      deliveryMode: result.deliveryMode,
+      repeatRule: _repeatRule(result),
+      tone: result.tone,
+      spokenMessage: result.spokenMessage,
+      snoozeMinutes: result.snoozeMinutes,
+    );
+    setState(() => _userTemplates = [..._userTemplates, draft]);
+    await AppPreferences.saveUserTemplates(
+      _userTemplates.map((template) => template.toMap()).toList(),
+    );
   }
 
   @override
@@ -189,15 +226,21 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
     );
   }
 
-  void _openReminderDetails(Reminder reminder) {
-    _navigatorKey.currentState!.push(
-      MaterialPageRoute<void>(
-        builder: (_) => ReminderDetailScreen(
-          reminder: reminder,
-          onEdit: () => _editReminder(reminder),
-          onDelete: () => _deleteReminder(reminder),
-          onToggleEnabled: (enabled) => _toggleReminder(reminder, enabled),
-        ),
+  Future<void> _openReminderDetails(Reminder reminder) async {
+    await showModalBottomSheet<void>(
+      context: _navigatorKey.currentState!.context,
+      isScrollControlled: true,
+      enableDrag: true,
+      isDismissible: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReminderDetailScreen(
+        reminder: reminder,
+        onEdit: () {
+          _navigatorKey.currentState?.pop();
+          _editReminder(reminder);
+        },
+        onDelete: () => _deleteReminder(reminder),
+        onToggleEnabled: (enabled) => _toggleReminder(reminder, enabled),
       ),
     );
   }
@@ -284,9 +327,10 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
 
   @override
   Widget build(BuildContext context) {
+    AppColors.brightness = _darkMode ? Brightness.dark : Brightness.light;
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.auraMagenta,
-      brightness: Brightness.dark,
+      seedColor: AppColors.brass,
+      brightness: _darkMode ? Brightness.dark : Brightness.light,
     );
     return MaterialApp(
       title: 'Speaking Clock',
@@ -307,7 +351,7 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
           error: AppColors.destructive,
         ),
         scaffoldBackgroundColor: AppColors.ink,
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           backgroundColor: AppColors.ink,
           foregroundColor: AppColors.bone,
           surfaceTintColor: Colors.transparent,
@@ -342,37 +386,37 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.bone,
-            side: const BorderSide(color: AppColors.line),
+            side: BorderSide(color: AppColors.line),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
-          labelStyle: const TextStyle(color: AppColors.boneDim),
-          hintStyle: const TextStyle(color: AppColors.boneDim),
-          helperStyle: const TextStyle(color: AppColors.boneDim),
+          labelStyle: TextStyle(color: AppColors.boneDim),
+          hintStyle: TextStyle(color: AppColors.boneDim),
+          helperStyle: TextStyle(color: AppColors.boneDim),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.line),
+            borderSide: BorderSide(color: AppColors.line),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.line),
+            borderSide: BorderSide(color: AppColors.line),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: AppColors.bone, width: 1.2),
+            borderSide: BorderSide(color: AppColors.bone, width: 1.2),
           ),
         ),
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppColors.surfaceRaised,
-          contentTextStyle: const TextStyle(color: AppColors.bone),
+          contentTextStyle: TextStyle(color: AppColors.bone),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.brass,
           foregroundColor: Color(0xff1A1205),
         ),
@@ -382,7 +426,9 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
           : !_onboardingComplete!
           ? OnboardingScreen(onComplete: _finishOnboarding)
           : Scaffold(
+              extendBody: true,
               body: SafeArea(
+                bottom: false,
                 child: IndexedStack(
                   index: _tab,
                   children: [
@@ -400,13 +446,13 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
                       readiness: _readiness,
                     ),
                     RoutinesScreen(
-                      reminders: _reminders,
                       onAdd: _showAddReminder,
                       onUseTemplate: (draft) => _showAddReminder(
                         initialType: draft.type,
                         draft: draft,
                       ),
-                      onOpenReminder: _openReminderDetails,
+                      userTemplates: _userTemplates,
+                      onAddTemplate: _addTemplate,
                     ),
                     SettingsScreen(
                       darkMode: _darkMode,
@@ -424,17 +470,6 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
                   ],
                 ),
               ),
-              floatingActionButton: _tab == 2
-                  ? null
-                  : FloatingActionButton.extended(
-                      onPressed: _showAddReminder,
-                      backgroundColor: AppColors.brass,
-                      foregroundColor: const Color(0xff1A1205),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add reminder'),
-                    ),
-              floatingActionButtonLocation:
-                  FloatingActionButtonLocation.endFloat,
               bottomNavigationBar: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                 child: _AuraBottomNav(
@@ -468,9 +503,15 @@ class _AuraBottomNav extends StatelessWidget {
         child: Container(
           height: 70,
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.88),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xF01C1C20)
+                : AppColors.surface.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(34),
-            border: Border.all(color: AppColors.line),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0x14FFFFFF)
+                  : AppColors.line,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.42),
@@ -522,17 +563,39 @@ class _AuraBottomNavItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            selected ? selectedIcon : icon,
-            color: selected ? AppColors.brass : AppColors.boneDim,
-            size: 21,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.brass : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              selected ? selectedIcon : icon,
+              color: selected
+                  ? (ThemeData.estimateBrightnessForColor(AppColors.brass) ==
+                            Brightness.dark
+                        ? Colors.white
+                        : AppColors.onBrass)
+                  : (Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0x8AFFFFFF)
+                        : AppColors.boneDim),
+              size: 21,
+            ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
           Text(
             label.toUpperCase(),
             style: TextStyle(
               fontFamily: 'monospace',
-              color: selected ? AppColors.bone : AppColors.boneDim,
+              color: selected
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : AppColors.bone)
+                  : (Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0x8AFFFFFF)
+                        : AppColors.boneDim),
               fontSize: 9,
               letterSpacing: 1.8,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
