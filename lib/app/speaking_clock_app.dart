@@ -436,6 +436,7 @@ class _SpeakingClockAppState extends State<SpeakingClockApp>
                       reminders: _reminders,
                       onAdd: _showAddReminder,
                       onOpenReminder: _openReminderDetails,
+                      onToggleEnabled: _toggleReminder,
                       onOpenReliability: () => _navigatorKey.currentState!
                           .push(
                             MaterialPageRoute<void>(

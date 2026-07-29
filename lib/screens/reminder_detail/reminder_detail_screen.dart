@@ -130,16 +130,23 @@ class ReminderDetailScreen extends StatelessWidget {
   }
 }
 
-class _DetailHero extends StatelessWidget {
+class _DetailHero extends StatefulWidget {
   const _DetailHero({required this.reminder, required this.onToggleEnabled});
 
   final Reminder reminder;
   final ValueChanged<bool> onToggleEnabled;
 
   @override
+  State<_DetailHero> createState() => _DetailHeroState();
+}
+
+class _DetailHeroState extends State<_DetailHero> {
+  late bool enabled = widget.reminder.enabled;
+
+  @override
   Widget build(BuildContext context) {
+    final reminder = widget.reminder;
     final mode = reminder.deliveryMode;
-    final enabled = reminder.enabled;
     final light = Theme.of(context).brightness == Brightness.light;
     final base = enabled ? _intensityColor(mode) : AppColors.boneDim;
     final onCover = ThemeData.estimateBrightnessForColor(base) == Brightness.dark
@@ -258,7 +265,10 @@ class _DetailHero extends StatelessWidget {
                       ),
                       Switch.adaptive(
                         value: enabled,
-                        onChanged: onToggleEnabled,
+                        onChanged: (value) {
+                          setState(() => enabled = value);
+                          widget.onToggleEnabled(value);
+                        },
                         activeThumbColor: onCover,
                         activeTrackColor: onCover.withValues(alpha: 0.4),
                       ),

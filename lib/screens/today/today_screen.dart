@@ -6,6 +6,7 @@ class TodayScreen extends StatelessWidget {
     required this.reminders,
     required this.onAdd,
     required this.onOpenReminder,
+    required this.onToggleEnabled,
     required this.onOpenReliability,
     required this.readiness,
   });
@@ -13,6 +14,7 @@ class TodayScreen extends StatelessWidget {
   final List<Reminder> reminders;
   final VoidCallback onAdd;
   final ValueChanged<Reminder> onOpenReminder;
+  final void Function(Reminder reminder, bool enabled) onToggleEnabled;
   final VoidCallback onOpenReliability;
   final AlarmReadiness? readiness;
 
@@ -48,6 +50,7 @@ class TodayScreen extends StatelessWidget {
             reminder: next,
             big: true,
             onTap: () => onOpenReminder(next),
+            onToggleEnabled: (value) => onToggleEnabled(next, value),
           ),
         const SizedBox(height: 26),
         Row(
@@ -68,6 +71,7 @@ class TodayScreen extends StatelessWidget {
               reminder: reminder,
               big: false,
               onTap: () => onOpenReminder(reminder),
+              onToggleEnabled: (value) => onToggleEnabled(reminder, value),
             ),
           ),
         const SizedBox(height: 20),
@@ -360,11 +364,13 @@ class _FolderReminderCard extends StatelessWidget {
     required this.reminder,
     required this.big,
     required this.onTap,
+    required this.onToggleEnabled,
   });
 
   final Reminder reminder;
   final bool big;
   final VoidCallback onTap;
+  final ValueChanged<bool> onToggleEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +474,7 @@ class _FolderReminderCard extends StatelessWidget {
             ),
             SizedBox(height: big ? 18 : 14),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text.rich(
                   TextSpan(
@@ -489,11 +495,69 @@ class _FolderReminderCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
+                _OnOffToggle(
+                  enabled: enabled,
+                  onCover: onCover,
+                  onChanged: onToggleEnabled,
+                ),
                 const Spacer(),
                 Icon(Icons.north_east_rounded, color: onCover, size: big ? 26 : 24),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact On/Off switch that lives on a reminder card. Uses the card's
+/// [onCover] colour so it reads on any intensity fill. Has its own tap target
+/// so flipping it does not also open the detail sheet.
+class _OnOffToggle extends StatelessWidget {
+  const _OnOffToggle({
+    required this.enabled,
+    required this.onCover,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final Color onCover;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final knob = Container(
+      height: 18,
+      width: 18,
+      decoration: BoxDecoration(
+        color: enabled ? onCover : onCover.withValues(alpha: 0.55),
+        shape: BoxShape.circle,
+      ),
+    );
+    final label = Text(
+      enabled ? 'ON' : 'OFF',
+      style: _mono(size: 11, color: onCover, spacing: 1.2),
+    );
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!enabled),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: onCover.withValues(alpha: enabled ? 0.22 : 0.10),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: onCover.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: enabled
+              ? [label, const SizedBox(width: 7), knob]
+              : [knob, const SizedBox(width: 7), label],
         ),
       ),
     );
